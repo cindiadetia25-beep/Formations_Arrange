@@ -1,23 +1,29 @@
 // ==========================================
 // KONFIGURASI API GOOGLE APPS SCRIPT
 // ==========================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypOugpXmLsnd_Q4dYber4O6V_xDt4JrDeCaiA-RgrirMCDtHpaJNxewlAfiMA6MhACiA/exec";
+const APPS_SCRIPT_URL = "TEMPEL_URL_WEB_APP_APPS_SCRIPT_ANDA_DI_SINI";
 
-// Ukuran Lapangan (Skala responsif untuk layar HP/PC)
-const FIELD_WIDTH = Math.min(window.innerWidth - 30, 600);
-const FIELD_HEIGHT = Math.min(window.innerHeight - 240, 420);
+// Ukuran Meter Lapangan & Skala Pixel
+let fieldMetersL = 22; // Panjang (ke belakang)
+let fieldMetersW = 15; // Lebar (ke samping)
+let canvasW = 300;
+let canvasH = 360;
 
-// State Aplikasi
-let scenes = [];          // Menyimpan seluruh hitungan/keyframe
-let currentSceneIdx = 0;  // Hitungan yang sedang aktif diedit
-let memberNodes = {};     // Menyimpan objek lingkaran Konva per ID anggota
-let savedFormations = []; // Cache data dari Google Sheets
+// State Utama & Riwayat Undo/Redo
+let scenes = [];
+let currentSceneIdx = 0;
+let memberNodes = {};
+let selectedMemberId = null;
+let savedFormations = [];
+
+let undoStack = [];
+let redoStack = [];
 
 // Inisialisasi Konva Stage & Layer
 const stage = new Konva.Stage({
   container: 'canvas-container',
-  width: FIELD_WIDTH,
-  height: FIELD_HEIGHT
+  width: canvasW,
+  height: canvasH
 });
 
 const gridLayer = new Konva.Layer();
@@ -26,31 +32,125 @@ stage.add(gridLayer);
 stage.add(troopLayer);
 
 // ==========================================
-// 1. MENGGAMBAR GARIS LAPANGAN (GRID)
+// SISTEM CUSTOM POP-UP MODAL (DI DALAM LAYAR)
 // ==========================================
-function drawFieldGrid() {
-  const step = 30; // Jarak antar garis grid (pixel)
-  
-  // Garis Vertikal & Horizontal
-  for (let x = 0; x <= FIELD_WIDTH; x += step) {
-    gridLayer.add(new Konva.Line({
-      points: [x, 0, x, FIELD_HEIGHT],
-      stroke: 'rgba(255, 255, 255, 0.15)',
-      strokeWidth: 1
-    }));
+function showPopup(title, message, isConfirm = false) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('customModal');
+    const titleEl = document.getElementById('modalTitle');
+    const msgEl = document.getElementById('modalMessage');
+    const btnOk = document.getElementById('modalConfirm');
+    const btnCancel = document.getElementById('modalCancel');
+
+    titleEl.innerText = title;
+    msgEl.innerText = message;
+    overlay.classList.remove('hidden');
+
+    if (isConfirm) {
+      btnCancel.classList.remove('hidden');
+    } else {
+      btnCancel.classList.add('hidden');
+    }
+
+    const cleanup = (result) => {
+      overlay.classList.add('hidden');
+      btnOk.onclick = null;
+      btnCancel.onclick = null;
+      resolve(result);
+    };
+
+    btnOk.onclick = () => cleanup(true);
+    btnCancel.onclick = () => cleanup(false);
+  });
+}
+
+// ==========================================
+// SISTEM UNDO & REDO
+// ==========================================
+function saveHistoryState() {
+  undoStack.push(JSON.stringify({
+    scenes: scenes,
+    currentSceneIdx: currentSceneIdx
+  }));
+  if (undoStack.length > 30) undoStack.shift(); // Maksimal 30 langkah
+  redoStack = [];
+  updateHistoryButtons();
+}
+
+function updateHistoryButtons() {
+  document.getElementById('btnUndo').disabled = undoStack.length === 0;
+  document.getElementById('btnRedo').disabled = redoStack.length === 0;
+}
+
+document.getElementById('btnUndo').addEventListener('click', () => {
+  if (undoStack.length === 0) return;
+  redoStack.push(JSON.stringify({ scenes, currentSceneIdx }));
+  const prev = JSON.parse(undoStack.pop());
+  scenes = prev.scenes;
+  currentSceneIdx = prev.currentSceneIdx;
+  rebuildCanvas();
+  updateHistoryButtons();
+  setStatus("Undo dilakukan");
+});
+
+document.getElementById('btnRedo').addEventListener('click', () => {
+  if (redoStack.length === 0) return;
+  undoStack.push(JSON.stringify({ scenes, currentSceneIdx }));
+  const next = JSON.parse(redoStack.pop());
+  scenes = next.scenes;
+  currentSceneIdx = next.currentSceneIdx;
+  rebuildCanvas();
+  updateHistoryButtons();
+  setStatus("Redo dilakukan");
+});
+
+// ==========================================
+// PENGATURAN UKURAN & GRID LAPANGAN
+// ==========================================
+function calculateCanvasDimensions() {
+  const maxW = Math.min(window.innerWidth - 32, 540);
+  const maxH = Math.min(window.innerHeight - 270, 440);
+  const ratio = fieldMetersW / fieldMetersL;
+
+  if (maxW / maxH > ratio) {
+    canvasH = maxH;
+    canvasW = Math.round(maxH * ratio);
+  } else {
+    canvasW = maxW;
+    canvasH = Math.round(maxW / ratio);
   }
-  for (let y = 0; y <= FIELD_HEIGHT; y += step) {
+
+  stage.width(canvasW);
+  stage.height(canvasH);
+  document.getElementById('fieldLabel').innerText = `ARAH DEWAN JURI / DP (${fieldMetersL}m x ${fieldMetersW}m)`;
+  drawFieldGrid();
+}
+
+function drawFieldGrid() {
+  gridLayer.destroyChildren();
+  const stepX = canvasW / fieldMetersW; // 1 kotak = 1 meter
+  const stepY = canvasH / fieldMetersL;
+
+  for (let i = 1; i < fieldMetersW; i++) {
     gridLayer.add(new Konva.Line({
-      points: [0, y, FIELD_WIDTH, y],
-      stroke: 'rgba(255, 255, 255, 0.15)',
+      points: [i * stepX, 0, i * stepX, canvasH],
+      stroke: i % 5 === 0 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)',
       strokeWidth: 1
     }));
   }
 
-  // Titik Tengah Lapangan (Pusat Variasi)
+  for (let j = 1; j < fieldMetersL; j++) {
+    gridLayer.add(new Konva.Line({
+      points: [0, j * stepY, canvasW, j * stepY],
+      stroke: j % 5 === 0 ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)',
+      strokeWidth: 1
+    }));
+  }
+
+  // Titik Tengah Lapangan
   gridLayer.add(new Konva.Circle({
-    x: FIELD_WIDTH / 2,
-    y: FIELD_HEIGHT / 2,
+    x: canvasW / 2,
+    y: canvasH / 2,
     radius: 4,
     fill: '#facc15'
   }));
@@ -58,32 +158,43 @@ function drawFieldGrid() {
   gridLayer.draw();
 }
 
+document.getElementById('btnApplyField').addEventListener('click', () => {
+  const l = parseInt(document.getElementById('fieldLength').value);
+  const w = parseInt(document.getElementById('fieldWidth').value);
+  if (!l || !w || l < 5 || w < 5) {
+    showPopup("Ukuran Tidak Valid", "Masukkan panjang dan lebar lapangan minimal 5 meter.");
+    return;
+  }
+  fieldMetersL = l;
+  fieldMetersW = w;
+  calculateCanvasDimensions();
+  setStatus(`Lapangan diubah: ${l}m x ${w}m`);
+});
+
 // ==========================================
-// 2. INISIALISASI PASUKAN (3 BAN x 5 SAF + DANTON)
+// MANAJEMEN PASUKAN & SELEKSI TITIK
 // ==========================================
 function createDefaultFormation() {
   const members = [];
-  const startX = FIELD_WIDTH / 2 - 40;
-  const startY = FIELD_HEIGHT / 2 - 60;
-  const gap = 38;
+  const startX = canvasW / 2 - 34;
+  const startY = canvasH / 2 - 60;
+  const gap = 34;
 
-  // Danton (Nomor D)
   members.push({
     id: 'D',
     label: 'D',
-    color: '#ef4444', // Merah
-    x: startX - 50,
+    color: '#ef4444',
+    x: Math.max(20, startX - 42),
     y: startY + (2 * gap)
   });
 
-  // 15 Pasukan (3 Ban x 5 Saf)
   let num = 1;
   for (let saf = 0; saf < 5; saf++) {
     for (let ban = 0; ban < 3; ban++) {
       members.push({
         id: 'P' + num,
         label: String(num),
-        color: '#2563eb', // Biru
+        color: '#2563eb',
         x: startX + (ban * gap),
         y: startY + (saf * gap)
       });
@@ -93,14 +204,50 @@ function createDefaultFormation() {
   return members;
 }
 
-// Render Pasukan ke Kanvas berdasarkan Scene aktif
-function renderScene(sceneIndex) {
+function selectMember(id) {
+  selectedMemberId = id;
+  document.getElementById('btnDeleteSelected').disabled = !id;
+
+  Object.keys(memberNodes).forEach(key => {
+    const circle = memberNodes[key].findOne('Circle');
+    if (circle) {
+      circle.stroke(key === id ? '#facc15' : '#ffffff');
+      circle.strokeWidth(key === id ? 3.5 : 2);
+    }
+  });
+  troopLayer.draw();
+}
+
+// Klik area kosong lapangan untuk membatalkan pilihan titik
+stage.on('click tap', (e) => {
+  if (e.target === stage) {
+    selectMember(null);
+  }
+});
+
+function rebuildCanvas() {
+  troopLayer.destroyChildren();
+  memberNodes = {};
+  selectMember(null);
+  renderScene(currentSceneIdx, false);
+}
+
+function renderScene(sceneIndex, animate = true) {
   currentSceneIdx = sceneIndex;
   const sceneData = scenes[sceneIndex];
+  if (!sceneData) return;
+
+  // Hapus node yang sudah tidak ada di scene ini
+  const currentIds = sceneData.members.map(m => m.id);
+  Object.keys(memberNodes).forEach(id => {
+    if (!currentIds.includes(id)) {
+      memberNodes[id].destroy();
+      delete memberNodes[id];
+    }
+  });
 
   sceneData.members.forEach(m => {
     if (!memberNodes[m.id]) {
-      // Buat grup lingkaran + angka jika belum ada
       const group = new Konva.Group({
         x: m.x,
         y: m.y,
@@ -108,7 +255,7 @@ function renderScene(sceneIndex) {
       });
 
       const circle = new Konva.Circle({
-        radius: 14,
+        radius: 13,
         fill: m.color,
         stroke: '#ffffff',
         strokeWidth: 2,
@@ -119,19 +266,32 @@ function renderScene(sceneIndex) {
 
       const text = new Konva.Text({
         text: m.label,
-        fontSize: 12,
+        fontSize: 11,
         fontStyle: 'bold',
         fill: '#ffffff',
-        width: 28,
+        width: 26,
         align: 'center',
-        offsetX: 14,
-        offsetY: 6
+        offsetX: 13,
+        offsetY: 5.5
       });
 
       group.add(circle);
       group.add(text);
 
-      // Simpan koordinat baru setiap kali pasukan selesai digeser (dragend)
+      // Pilih titik saat diklik/disentuh
+      group.on('click tap', (e) => {
+        e.cancelBubble = true;
+        selectMember(m.id);
+        setStatus(`Terpilih: Titik ${m.label}`);
+      });
+
+      // Simpan riwayat sebelum digeser
+      group.on('dragstart', () => {
+        selectMember(m.id);
+        saveHistoryState();
+      });
+
+      // Simpan koordinat baru setelah digeser
       group.on('dragend', () => {
         const target = scenes[currentSceneIdx].members.find(item => item.id === m.id);
         if (target) {
@@ -143,20 +303,75 @@ function renderScene(sceneIndex) {
       troopLayer.add(group);
       memberNodes[m.id] = group;
     } else {
-      // Pindahkan posisi jika objek sudah ada
-      memberNodes[m.id].to({
-        x: m.x,
-        y: m.y,
-        duration: 0.25
-      });
+      if (animate) {
+        memberNodes[m.id].to({ x: m.x, y: m.y, duration: 0.25 });
+      } else {
+        memberNodes[m.id].position({ x: m.x, y: m.y });
+      }
     }
   });
 
+  troopLayer.draw();
   renderTimelineUI();
 }
 
+// Tambah 1 Anggota Pasukan
+document.getElementById('btnAddMember').addEventListener('click', () => {
+  saveHistoryState();
+  const nextNum = scenes[currentSceneIdx].members.length + 1;
+  const newMember = {
+    id: 'P' + Date.now(),
+    label: String(nextNum),
+    color: '#0284c7',
+    x: Math.round(canvasW / 2),
+    y: Math.round(canvasH / 2)
+  };
+  scenes.forEach(sc => sc.members.push({ ...newMember }));
+  renderScene(currentSceneIdx, false);
+  setStatus(`Titik ${nextNum} ditambahkan`);
+});
+
+// Hapus Titik yang Dipilih
+document.getElementById('btnDeleteSelected').addEventListener('click', async () => {
+  if (!selectedMemberId) return;
+  const ok = await showPopup("Hapus Titik", "Hapus titik pasukan yang dipilih dari seluruh hitungan?", true);
+  if (!ok) return;
+
+  saveHistoryState();
+  scenes.forEach(sc => {
+    sc.members = sc.members.filter(m => m.id !== selectedMemberId);
+  });
+  selectMember(null);
+  renderScene(currentSceneIdx, false);
+  setStatus("Titik dihapus");
+});
+
+// Hapus Seluruh Titik (Kosongkan Lapangan)
+document.getElementById('btnClearAll').addEventListener('click', async () => {
+  const ok = await showPopup("Hapus Semua", "Kosongkan seluruh titik pasukan di lapangan?", true);
+  if (!ok) return;
+
+  saveHistoryState();
+  scenes = [{ name: "Hitungan 1", members: [] }];
+  currentSceneIdx = 0;
+  rebuildCanvas();
+  setStatus("Lapangan dikosongkan");
+});
+
+// Reset ke Formasi Standar (3 Ban x 5 Saf + Danton)
+document.getElementById('btnResetPos').addEventListener('click', async () => {
+  const ok = await showPopup("Reset Formasi", "Kembalikan pasukan ke formasi awal (15 pasukan + Danton)?", true);
+  if (!ok) return;
+
+  saveHistoryState();
+  scenes = [{ name: "Hitungan 1", members: createDefaultFormation() }];
+  currentSceneIdx = 0;
+  rebuildCanvas();
+  setStatus("Formasi di-reset");
+});
+
 // ==========================================
-// 3. SISTEM TIMELINE & ANIMASI (PLAY)
+// TIMELINE & ANIMASI
 // ==========================================
 function renderTimelineUI() {
   const listEl = document.getElementById('sceneList');
@@ -171,66 +386,62 @@ function renderTimelineUI() {
   });
 }
 
-// Tambah Hitungan Baru (Menggandakan posisi dari hitungan terakhir)
 document.getElementById('btnAddScene').addEventListener('click', () => {
+  saveHistoryState();
   const lastScene = scenes[scenes.length - 1];
   const clonedMembers = JSON.parse(JSON.stringify(lastScene.members));
-  
+
   scenes.push({
     name: `Hitungan ${scenes.length + 1}`,
     members: clonedMembers
   });
-  
+
   renderScene(scenes.length - 1);
-  setStatus(`Hitungan ${scenes.length} ditambahkan`);
+  setStatus(`Hitungan ${scenes.length} dibuat`);
 });
 
-// Putar Animasi Berurutan dari Hitungan 1 sampai Akhir
 document.getElementById('btnPlay').addEventListener('click', async () => {
   if (scenes.length < 2) {
-    alert("Tambahkan minimal 2 Hitungan untuk memutar animasi gerakan.");
+    showPopup("Animasi", "Tambahkan minimal 2 Hitungan terlebih dahulu untuk memutar pergerakan.");
     return;
   }
 
-  setStatus("Memutar animasi...");
+  setStatus("Memutar...");
   for (let i = 0; i < scenes.length; i++) {
     currentSceneIdx = i;
     renderTimelineUI();
 
-    const sceneData = scenes[i];
-    sceneData.members.forEach(m => {
+    scenes[i].members.forEach(m => {
       if (memberNodes[m.id]) {
         memberNodes[m.id].to({
           x: m.x,
           y: m.y,
-          duration: 1.0, // Durasi transisi 1 detik antar hitungan
+          duration: 1.0,
           easing: Konva.Easings.EaseInOut
         });
       }
     });
 
-    // Tunggu 1.2 detik sebelum lanjut ke hitungan berikutnya
     await new Promise(resolve => setTimeout(resolve, 1200));
   }
-  setStatus("Animasi selesai");
+  setStatus("Selesai");
 });
 
 // ==========================================
-// 4. KONEKSI DATABASE GOOGLE APPS SCRIPT
+// KONEKSI DATABASE GOOGLE APPS SCRIPT
 // ==========================================
 function setStatus(msg) {
   document.getElementById('statusText').innerText = msg;
 }
 
-// Simpan Formasi ke Google Sheets
 document.getElementById('btnSave').addEventListener('click', async () => {
   const nama = document.getElementById('formationName').value.trim();
   if (!nama) {
-    alert("Masukkan nama formasi terlebih dahulu!");
+    showPopup("Nama Kosong", "Silakan isi nama formasi terlebih dahulu sebelum menyimpan.");
     return;
   }
 
-  setStatus("Menyimpan ke Google Sheets...");
+  setStatus("Menyimpan...");
   try {
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
@@ -242,23 +453,22 @@ document.getElementById('btnSave').addEventListener('click', async () => {
     });
     const result = await response.json();
     if (result.status === "success") {
-      setStatus("Tersimpan!");
-      alert(result.message);
-      loadSavedFormations(); // Refresh dropdown
+      setStatus("Tersimpan");
+      showPopup("Berhasil", result.message);
+      loadSavedFormations();
     } else {
-      alert("Gagal: " + result.message);
+      showPopup("Gagal Menyimpan", result.message);
     }
   } catch (err) {
     setStatus("Gagal terhubung");
-    alert("Error koneksi ke Apps Script: " + err);
+    showPopup("Koneksi Gagal", "Tidak dapat terhubung ke Google Apps Script. Periksa internet atau URL API Anda.");
   }
 });
 
-// Ambil Daftar Formasi dari Google Sheets saat web dibuka
 async function loadSavedFormations() {
   if (APPS_SCRIPT_URL.includes("TEMPEL_URL")) return;
-  
-  setStatus("Memuat data cloud...");
+
+  setStatus("Memuat cloud...");
   try {
     const res = await fetch(APPS_SCRIPT_URL);
     const json = await res.json();
@@ -266,7 +476,7 @@ async function loadSavedFormations() {
       savedFormations = json.data;
       const select = document.getElementById('savedList');
       select.innerHTML = '<option value="">-- Muat Formasi --</option>';
-      
+
       savedFormations.forEach((item, index) => {
         const opt = document.createElement('option');
         opt.value = index;
@@ -276,54 +486,30 @@ async function loadSavedFormations() {
       setStatus("Siap");
     }
   } catch (e) {
-    setStatus("Mode Offline");
+    setStatus("Offline");
   }
 }
 
-// Pilih & Muat Formasi dari Dropdown
 document.getElementById('savedList').addEventListener('change', (e) => {
   const idx = e.target.value;
   if (idx === "") return;
 
+  saveHistoryState();
   const selected = savedFormations[idx];
   document.getElementById('formationName').value = selected.nama;
   scenes = selected.dataJson;
-  
-  // Reset node kanvas dan render ulang
-  troopLayer.destroyChildren();
-  memberNodes = {};
-  renderScene(0);
-  setStatus(`Memuat: ${selected.nama}`);
+  currentSceneIdx = 0;
+  rebuildCanvas();
+  setStatus(`Dimuat: ${selected.nama}`);
 });
 
-// Tambah Anggota Pasukan Baru secara manual
-document.getElementById('btnAddMember').addEventListener('click', () => {
-  const nextNum = scenes[0].members.length;
-  const newMember = {
-    id: 'P' + Date.now(),
-    label: String(nextNum),
-    color: '#0284c7',
-    x: FIELD_WIDTH / 2,
-    y: FIELD_HEIGHT / 2
-  };
-  scenes.forEach(sc => sc.members.push({ ...newMember }));
-  renderScene(currentSceneIdx);
-});
-
-// Reset ke formasi dasar
-document.getElementById('btnResetPos').addEventListener('click', () => {
-  if (!confirm("Reset semua hitungan ke formasi awal?")) return;
-  scenes = [{ name: "Hitungan 1", members: createDefaultFormation() }];
-  troopLayer.destroyChildren();
-  memberNodes = {};
-  renderScene(0);
-});
-
-// Jalankan Aplikasi Pertama Kali
-drawFieldGrid();
+// ==========================================
+// INISIALISASI AWAL
+// ==========================================
+calculateCanvasDimensions();
 scenes.push({
   name: "Hitungan 1",
   members: createDefaultFormation()
 });
-renderScene(0);
+renderScene(0, false);
 loadSavedFormations();
