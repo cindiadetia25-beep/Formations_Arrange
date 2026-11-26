@@ -1,0 +1,21 @@
+{
+  "name": "Paskibra Arrange - Perancang Formasi",
+  "short_name": "PaskibraArrange",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#12151c",
+  "theme_color": "#1e293b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/921/921490.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/921/921490.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
