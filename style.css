@@ -1,0 +1,147 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  background-color: #12151c;
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Toolbar Atas */
+.toolbar {
+  background-color: #1e293b;
+  padding: 10px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #334155;
+}
+
+.brand {
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+}
+
+.brand span {
+  color: #ef4444;
+  margin-left: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+input, select {
+  background: #0f172a;
+  border: 1px solid #475569;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn.primary { background: #dc2626; color: white; }
+.btn.primary:hover { background: #b91c1c; }
+.btn.secondary { background: #334155; color: #e2e8f0; }
+.btn.play { background: #16a34a; color: white; }
+.btn.add { background: #2563eb; color: white; }
+
+/* Workspace Lapangan */
+.workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 10px;
+}
+
+.field-info {
+  background: #334155;
+  padding: 4px 16px;
+  border-radius: 4px 4px 0 0;
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 1.5px;
+  color: #94a3b8;
+}
+
+#canvas-container {
+  background-color: #1b4332; /* Hijau lapangan */
+  border: 2px solid #ffffff;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  touch-action: none; /* Mencegah layar ikut ter-scroll saat menggeser pasukan di HP */
+}
+
+.quick-tools {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+/* Panel Timeline Bawah */
+.timeline-panel {
+  background-color: #1e293b;
+  border-top: 1px solid #334155;
+  padding: 10px 16px;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.status {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin-left: auto;
+}
+
+.scene-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.scene-card {
+  background: #0f172a;
+  border: 2px solid #334155;
+  padding: 8px 14px;
+  border-radius: 8px;
+  min-width: 100px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.scene-card.active {
+  border-color: #ef4444;
+  background: #281a21;
+}
