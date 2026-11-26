@@ -1,7 +1,7 @@
 // ==========================================
 // KONFIGURASI API GOOGLE APPS SCRIPT
 // ==========================================
-const APPS_SCRIPT_URL = "TEMPEL_URL_WEB_APP_APPS_SCRIPT_ANDA_DI_SINI";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypOugpXmLsnd_Q4dYber4O6V_xDt4JrDeCaiA-RgrirMCDtHpaJNxewlAfiMA6MhACiA/exec";
 
 // Ukuran Meter Lapangan & Skala Pixel
 let fieldMetersL = 22; // Panjang (ke belakang)
