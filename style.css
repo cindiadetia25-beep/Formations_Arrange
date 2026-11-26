@@ -14,57 +14,98 @@ body {
   overflow: hidden;
 }
 
-/* Toolbar Atas */
+/* Toolbar Utama */
 .toolbar {
   background-color: #1e293b;
-  padding: 10px 16px;
+  padding: 8px 12px;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border-bottom: 1px solid #334155;
 }
 
 .brand {
   font-weight: 800;
-  font-size: 1.1rem;
+  font-size: 1rem;
   letter-spacing: 1px;
 }
 
 .brand span {
   color: #ef4444;
-  margin-left: 4px;
+  margin-left: 3px;
 }
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
-input, select {
+/* Sub Toolbar (Ukuran Lapang & Undo/Redo) */
+.sub-toolbar {
+  background-color: #0f172a;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #1e293b;
+  font-size: 0.8rem;
+}
+
+.field-size-group, .history-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+input[type="text"], select {
   background: #0f172a;
   border: 1px solid #475569;
   color: white;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
+  max-width: 150px;
+}
+
+input[type="number"] {
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: white;
+  padding: 4px 6px;
+  border-radius: 5px;
+  width: 48px;
+  text-align: center;
+  font-size: 0.8rem;
 }
 
 .btn {
-  padding: 6px 12px;
+  padding: 6px 11px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   cursor: pointer;
-  transition: 0.2s;
+  transition: 0.15s;
+}
+
+.btn.small {
+  padding: 5px 9px;
+  font-size: 0.75rem;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .btn.primary { background: #dc2626; color: white; }
-.btn.primary:hover { background: #b91c1c; }
 .btn.secondary { background: #334155; color: #e2e8f0; }
+.btn.warning { background: #d97706; color: white; }
+.btn.danger { background: #991b1b; color: white; }
 .btn.play { background: #16a34a; color: white; }
 .btn.add { background: #2563eb; color: white; }
 
@@ -75,56 +116,58 @@ input, select {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: relative;
-  padding: 10px;
+  padding: 8px;
+  overflow: hidden;
 }
 
 .field-info {
   background: #334155;
-  padding: 4px 16px;
+  padding: 3px 14px;
   border-radius: 4px 4px 0 0;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: bold;
-  letter-spacing: 1.5px;
-  color: #94a3b8;
+  letter-spacing: 1px;
+  color: #cbd5e1;
 }
 
 #canvas-container {
-  background-color: #1b4332; /* Hijau lapangan */
+  background-color: #1b4332;
   border: 2px solid #ffffff;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-  touch-action: none; /* Mencegah layar ikut ter-scroll saat menggeser pasukan di HP */
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+  touch-action: none;
 }
 
 .quick-tools {
   margin-top: 8px;
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
 }
 
 /* Panel Timeline Bawah */
 .timeline-panel {
   background-color: #1e293b;
   border-top: 1px solid #334155;
-  padding: 10px 16px;
+  padding: 8px 12px;
 }
 
 .playback-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .status {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #94a3b8;
   margin-left: auto;
 }
 
 .scene-list {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
   padding-bottom: 4px;
 }
@@ -132,16 +175,75 @@ input, select {
 .scene-card {
   background: #0f172a;
   border: 2px solid #334155;
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: 8px;
-  min-width: 100px;
+  min-width: 90px;
   text-align: center;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: bold;
+  white-space: nowrap;
 }
 
 .scene-card.active {
   border-color: #ef4444;
   background: #281a21;
+}
+
+/* Custom Pop-up Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-box {
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 340px;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+  text-align: center;
+}
+
+.modal-box h3 {
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+  color: #f8fafc;
+}
+
+.modal-box p {
+  font-size: 0.88rem;
+  color: #cbd5e1;
+  margin-bottom: 18px;
+  line-height: 1.4;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.modal-buttons .btn {
+  min-width: 85px;
+  padding: 8px 14px;
+}
+
+.hidden {
+  display: none !important;
 }
