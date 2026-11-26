@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Paskibra Formation Designer</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Library Konva.js untuk Kanvas & Animasi Pasukan -->
+  <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
+</head>
+<body>
+
+  <!-- Header & Kontrol Database -->
+  <header class="toolbar">
+    <div class="brand">PASKIBRA<span>ARRANGE</span></div>
+    <div class="actions">
+      <input type="text" id="formationName" placeholder="Nama Formasi (misal: Variasi 1)" />
+      <button id="btnSave" class="btn primary">Simpan ke Cloud</button>
+      <select id="savedList">
+        <option value="">-- Muat Formasi --</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Area Utama Kanvas Lapangan -->
+  <main class="workspace">
+    <div class="field-info">
+      <span>ARAH DEWAN JURI / DP</span>
+    </div>
+    <div id="canvas-container"></div>
+    <div class="quick-tools">
+      <button id="btnResetPos" class="btn secondary">Reset Saf/Ban</button>
+      <button id="btnAddMember" class="btn secondary">+ Pasukan</button>
+    </div>
+  </main>
+
+  <!-- Panel Timeline & Animasi (Mirip Arrange Us) -->
+  <footer class="timeline-panel">
+    <div class="playback-controls">
+      <button id="btnPlay" class="btn play">▶ Play Animasi</button>
+      <button id="btnAddScene" class="btn add">+ Tambah Hitungan</button>
+      <span id="statusText" class="status">Siap</span>
+    </div>
+    <div id="sceneList" class="scene-list">
+      <!-- Daftar Hitungan/Scene akan muncul di sini -->
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
