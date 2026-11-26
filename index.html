@@ -6,7 +6,7 @@
   <title>Paskibra Formation Designer</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e293b">
-  <!-- Library Konva.js untuk Kanvas & Animasi Pasukan -->
+  <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
 </head>
 <body>
@@ -16,38 +16,65 @@
     <div class="brand">PASKIBRA<span>ARRANGE</span></div>
     <div class="actions">
       <input type="text" id="formationName" placeholder="Nama Formasi (misal: Variasi 1)" />
-      <button id="btnSave" class="btn primary">Simpan ke Cloud</button>
+      <button id="btnSave" class="btn primary">Simpan</button>
       <select id="savedList">
         <option value="">-- Muat Formasi --</option>
       </select>
     </div>
   </header>
 
+  <!-- Bar Pengaturan Ukuran Lapangan & Undo/Redo -->
+  <section class="sub-toolbar">
+    <div class="field-size-group">
+      <span>Lapang (m):</span>
+      <input type="number" id="fieldLength" value="22" min="5" max="100" title="Panjang (m)">
+      <span>x</span>
+      <input type="number" id="fieldWidth" value="15" min="5" max="100" title="Lebar (m)">
+      <button id="btnApplyField" class="btn secondary small">Set</button>
+    </div>
+    <div class="history-group">
+      <button id="btnUndo" class="btn secondary small" disabled>↩ Undo</button>
+      <button id="btnRedo" class="btn secondary small" disabled>↪ Redo</button>
+    </div>
+  </section>
+
   <!-- Area Utama Kanvas Lapangan -->
   <main class="workspace">
     <div class="field-info">
-      <span>ARAH DEWAN JURI / DP</span>
+      <span id="fieldLabel">ARAH DEWAN JURI / DP (22m x 15m)</span>
     </div>
     <div id="canvas-container"></div>
     <div class="quick-tools">
-      <button id="btnResetPos" class="btn secondary">Reset Saf/Ban</button>
-      <button id="btnAddMember" class="btn secondary">+ Pasukan</button>
+      <button id="btnAddMember" class="btn secondary small">+ Pasukan</button>
+      <button id="btnDeleteSelected" class="btn warning small" disabled>Hapus Titik</button>
+      <button id="btnClearAll" class="btn danger small">Hapus Semua</button>
+      <button id="btnResetPos" class="btn secondary small">Reset Default</button>
     </div>
   </main>
 
-  <!-- Panel Timeline & Animasi (Mirip Arrange Us) -->
+  <!-- Panel Timeline & Animasi -->
   <footer class="timeline-panel">
     <div class="playback-controls">
-      <button id="btnPlay" class="btn play">▶ Play Animasi</button>
-      <button id="btnAddScene" class="btn add">+ Tambah Hitungan</button>
+      <button id="btnPlay" class="btn play">▶ Play</button>
+      <button id="btnAddScene" class="btn add">+ Hitungan</button>
       <span id="statusText" class="status">Siap</span>
     </div>
-    <div id="sceneList" class="scene-list">
-      <!-- Daftar Hitungan/Scene akan muncul di sini -->
-    </div>
+    <div id="sceneList" class="scene-list"></div>
   </footer>
 
- <script src="app.js"></script>
+  <!-- Custom Pop-up Modal (Pengganti Pop-up Bawaan Web) -->
+  <div id="customModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3 id="modalTitle">Informasi</h3>
+      <p id="modalMessage">Pesan notifikasi</p>
+      <div class="modal-buttons">
+        <button id="modalCancel" class="btn secondary hidden">Batal</button>
+        <button id="modalConfirm" class="btn primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
