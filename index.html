@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Paskibra Formation Designer</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1e293b">
   <!-- Library Konva.js untuk Kanvas & Animasi Pasukan -->
   <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
 </head>
@@ -46,6 +47,11 @@
     </div>
   </footer>
 
-  <script src="app.js"></script>
+ <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+  </script>
 </body>
 </html>
