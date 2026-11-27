@@ -109,7 +109,7 @@ document.getElementById('btnRedo').addEventListener('click', () => {
 // ==========================================
 function calculateCanvasDimensions() {
   const maxW = Math.min(window.innerWidth - 28, 520);
-  const maxH = Math.min(window.innerHeight - 285, 420);
+  const maxH = Math.min(window.innerHeight - 335, 380); // Ubah 285 menjadi 335
   const ratio = fieldMetersW / fieldMetersL;
 
   if (maxW / maxH > ratio) {
