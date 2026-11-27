@@ -4,14 +4,21 @@
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypOugpXmLsnd_Q4dYber4O6V_xDt4JrDeCaiA-RgrirMCDtHpaJNxewlAfiMA6MhACiA/exec";
 
 if (typeof Konva !== 'undefined') {
-  Konva.pixelRatio = 1.25;
+  Konva.pixelRatio = 1.5;
 }
 
-let fieldMetersL = 22; // Sisi panjang horizontal (landscape)
-let fieldMetersW = 15; // Sisi lebar vertikal (landscape)
-let fieldW = 360;      // Lebar area lapangan utama 2D
-let fieldH = 210;      // Tinggi area lapangan utama 2D
-const DANTON_AREA_H = 28; // Ruang ekstensi bawah agar titik D terlihat penuh di kotak Danton
+let competitionMode = 'LKBB'; // 'LKBB' (Kotak Danton) | 'RUKIBRA' (Tiang Bendera)
+let fieldMetersL = 22;
+let fieldMetersW = 15;
+let fieldW = 360;
+let fieldH = 210;
+const DANTON_AREA_H = 28;
+
+// Penyimpanan terpisah untuk 2 Slide Mode (LKBB & RUKIBRA)
+let modeStore = {
+  LKBB: { scenes: [], currentSceneIdx: 0 },
+  RUKIBRA: { scenes: [], currentSceneIdx: 0 }
+};
 
 let scenes = [];
 let currentSceneIdx = 0;
@@ -36,19 +43,21 @@ let mediaRecorderVoice = null;
 let voiceChunks = [];
 let isRecordingVoice = false;
 
-// State Simulasi 5D (Three.js Ringan + Sensorik + Gerak Alami)
+// State Simulasi 5D Realistis & Ringan
 let threeScene = null;
 let threeCamera = null;
 let threeRenderer = null;
 let threeMembers = {};
+let threeFlagMesh = null;
+let threeGrassTexture = null;
 let threeAnimId = null;
 
-let camAzimuth = 0.25;    // Sudut tribun lomba
-let camElevation = 0.88;  // Sudut kemiringan kamera tribun
+let camAzimuth = 0.28;
+let camElevation = 0.92;
 let camDistance = 24;
 
 // ============================================================================
-// BAGIAN 2: INISIALISASI KANVAS 2D KONVA (LAPANG + KOTAK DANTON TERPADU)
+// BAGIAN 2: INISIALISASI KANVAS 2D KONVA (LAPANG + KOTAK D / TIANG BENDERA)
 // ============================================================================
 const stage = new Konva.Stage({
   container: 'canvas-container',
@@ -117,10 +126,10 @@ function showPopup(title, message, options = {}) {
 }
 
 // ============================================================================
-// BAGIAN 4: SISTEM RIWAYAT UNDO & REDO
+// BAGIAN 4: SISTEM RIWAYAT UNDO & REDO + PERPINDAHAN SLIDE LKBB / RUKIBRA
 // ============================================================================
 function saveHistoryState() {
-  undoStack.push(JSON.stringify({ scenes, currentSceneIdx }));
+  undoStack.push(JSON.stringify({ competitionMode, scenes, currentSceneIdx }));
   if (undoStack.length > 25) undoStack.shift();
   redoStack = [];
   updateHistoryButtons();
@@ -135,7 +144,7 @@ function updateHistoryButtons() {
 
 document.getElementById('btnUndo').addEventListener('click', () => {
   if (undoStack.length === 0) return;
-  redoStack.push(JSON.stringify({ scenes, currentSceneIdx }));
+  redoStack.push(JSON.stringify({ competitionMode, scenes, currentSceneIdx }));
   const prev = JSON.parse(undoStack.pop());
   scenes = prev.scenes;
   currentSceneIdx = prev.currentSceneIdx;
@@ -147,7 +156,7 @@ document.getElementById('btnUndo').addEventListener('click', () => {
 
 document.getElementById('btnRedo').addEventListener('click', () => {
   if (redoStack.length === 0) return;
-  undoStack.push(JSON.stringify({ scenes, currentSceneIdx }));
+  undoStack.push(JSON.stringify({ competitionMode, scenes, currentSceneIdx }));
   const next = JSON.parse(redoStack.pop());
   scenes = next.scenes;
   currentSceneIdx = next.currentSceneIdx;
@@ -157,15 +166,43 @@ document.getElementById('btnRedo').addEventListener('click', () => {
   setStatus("Redo");
 });
 
+function switchCompetitionMode(newMode) {
+  if (competitionMode === newMode) return;
+  modeStore[competitionMode] = { scenes, currentSceneIdx };
+
+  competitionMode = newMode;
+  document.getElementById('btnModeLKBB').classList.toggle('active', newMode === 'LKBB');
+  document.getElementById('btnModeRukibra').classList.toggle('active', newMode === 'RUKIBRA');
+
+  if (!modeStore[newMode].scenes || modeStore[newMode].scenes.length === 0) {
+    modeStore[newMode] = {
+      scenes: [{ name: "Hitungan 1", members: createDefaultFormation(newMode) }],
+      currentSceneIdx: 0
+    };
+  }
+
+  scenes = modeStore[newMode].scenes;
+  currentSceneIdx = modeStore[newMode].currentSceneIdx;
+  setSelectedMembers([]);
+  updateFieldLabel();
+  drawFieldGrid();
+  rebuildCanvas();
+  if (is5DMode) rebuild5DFieldAndTroops();
+  setStatus(newMode === 'LKBB' ? "Slide 1: LKBB (Danton)" : "Slide 2: RUKIBRA (Tiang Bendera)");
+}
+
+document.getElementById('btnModeLKBB').addEventListener('click', () => switchCompetitionMode('LKBB'));
+document.getElementById('btnModeRukibra').addEventListener('click', () => switchCompetitionMode('RUKIBRA'));
+
 // ============================================================================
-// BAGIAN 5: UKURAN LAPANG LANDSCAPE, KOTAK DANTON UTUH & SKALA TITIK
+// BAGIAN 5: UKURAN LAPANG LANDSCAPE, KOTAK DANTON / TIANG BENDERA & SKALA
 // ============================================================================
 function getMemberRadius() {
   const meterPx = Math.min(fieldW / fieldMetersL, fieldH / fieldMetersW);
   return Math.max(5, Math.min(10, Math.round(meterPx * 0.36)));
 }
 
-function getDantonBoxRect() {
+function getSpecialZoneRect() {
   const boxW = 36;
   const boxH = 26;
   return {
@@ -176,12 +213,17 @@ function getDantonBoxRect() {
   };
 }
 
+function updateFieldLabel() {
+  const prefix = competitionMode === 'LKBB' ? 'MODE LKBB (DANTON)' : 'MODE RUKIBRA (TIANG BENDERA)';
+  document.getElementById('fieldLabel').innerText = `${prefix} — DP KANAN (${fieldMetersL}m x ${fieldMetersW}m)`;
+}
+
 function calculateCanvasDimensions() {
   const winW = window.innerWidth || 360;
   const winH = window.innerHeight || 640;
 
   const maxW = Math.max(260, Math.min(winW - 24, 640));
-  const maxH = Math.max(150, Math.min(winH - 375, 325));
+  const maxH = Math.max(150, Math.min(winH - 380, 325));
   const ratio = fieldMetersL / fieldMetersW;
 
   if (maxW / maxH > ratio) {
@@ -194,7 +236,7 @@ function calculateCanvasDimensions() {
 
   stage.width(fieldW);
   stage.height(fieldH + DANTON_AREA_H);
-  document.getElementById('fieldLabel').innerText = `ARAH DEWAN JURI / DP — KANAN (${fieldMetersL}m x ${fieldMetersW}m)`;
+  updateFieldLabel();
   drawFieldGrid();
 
   if (is5DMode) {
@@ -207,9 +249,8 @@ function drawFieldGrid() {
   gridLayer.clearCache();
   gridLayer.destroyChildren();
 
-  const dBox = getDantonBoxRect();
+  const zBox = getSpecialZoneRect();
 
-  // Latar Lapangan Utama 22m x 15m
   bgLayer.add(new Konva.Rect({
     x: 0,
     y: 0,
@@ -218,17 +259,15 @@ function drawFieldGrid() {
     fill: '#1b4332'
   }));
 
-  // Latar Kotak Khusus Danton (Menempel Utuh di Bawah Tengah)
   bgLayer.add(new Konva.Rect({
-    x: dBox.x,
-    y: dBox.y,
-    width: dBox.width,
-    height: dBox.height,
-    fill: '#1b4332'
+    x: zBox.x,
+    y: zBox.y,
+    width: zBox.width,
+    height: zBox.height,
+    fill: competitionMode === 'LKBB' ? '#1b4332' : '#334155'
   }));
   bgLayer.draw();
 
-  // Grid Meteran Lapangan
   const stepX = fieldW / fieldMetersL;
   const stepY = fieldH / fieldMetersW;
 
@@ -250,7 +289,6 @@ function drawFieldGrid() {
     }));
   }
 
-  // Titik Tengah Lapang
   gridLayer.add(new Konva.Circle({
     x: fieldW / 2,
     y: fieldH / 2,
@@ -259,7 +297,6 @@ function drawFieldGrid() {
     perfectDrawEnabled: false
   }));
 
-  // Garis Tepian Putih Utama 22m x 15m (4 Sisi Utuh)
   gridLayer.add(new Konva.Rect({
     x: 1,
     y: 1,
@@ -270,28 +307,54 @@ function drawFieldGrid() {
     perfectDrawEnabled: false
   }));
 
-  // Garis Tepian Putih Kotak Danton (4 Sisi Utuh & Huruf D Latar)
   gridLayer.add(new Konva.Rect({
-    x: dBox.x,
-    y: dBox.y,
-    width: dBox.width,
-    height: dBox.height,
+    x: zBox.x,
+    y: zBox.y,
+    width: zBox.width,
+    height: zBox.height,
     stroke: '#ffffff',
     strokeWidth: 2,
     perfectDrawEnabled: false
   }));
 
-  gridLayer.add(new Konva.Text({
-    x: dBox.x,
-    y: dBox.y + 7,
-    width: dBox.width,
-    align: 'center',
-    text: 'D',
-    fontSize: 11,
-    fontStyle: 'bold',
-    fill: 'rgba(252, 165, 165, 0.45)',
-    perfectDrawEnabled: false
-  }));
+  if (competitionMode === 'LKBB') {
+    gridLayer.add(new Konva.Text({
+      x: zBox.x,
+      y: zBox.y + 7,
+      width: zBox.width,
+      align: 'center',
+      text: 'D',
+      fontSize: 11,
+      fontStyle: 'bold',
+      fill: 'rgba(252, 165, 165, 0.45)',
+      perfectDrawEnabled: false
+    }));
+  } else {
+    const cx = zBox.x + zBox.width / 2;
+    const cy = zBox.y + zBox.height / 2;
+    gridLayer.add(new Konva.Circle({
+      x: cx,
+      y: cy,
+      radius: 4,
+      fill: '#e2e8f0',
+      stroke: '#0f172a',
+      strokeWidth: 1
+    }));
+    gridLayer.add(new Konva.Rect({
+      x: cx + 2,
+      y: cy - 6,
+      width: 10,
+      height: 3.5,
+      fill: '#ef4444'
+    }));
+    gridLayer.add(new Konva.Rect({
+      x: cx + 2,
+      y: cy - 2.5,
+      width: 10,
+      height: 3.5,
+      fill: '#ffffff'
+    }));
+  }
 
   gridLayer.cache();
   gridLayer.draw();
@@ -331,7 +394,7 @@ function normalizeMemberUniform(m) {
 
 document.getElementById('btnToggleShape').addEventListener('click', () => {
   pointShape = pointShape === 'circle' ? 'person' : 'circle';
-  document.getElementById('btnToggleShape').innerText = pointShape === 'circle' ? '👤 Orang' : '⚪ Bulat';
+  document.getElementById('btnToggleShape').innerText = pointShape === 'circle' ? '👤' : '⚪';
   rebuildCanvas();
   setStatus(pointShape === 'person' ? "Bentuk: Orang" : "Bentuk: Lingkaran");
 });
@@ -340,16 +403,25 @@ document.getElementById('btnSelectBox').addEventListener('click', () => {
   isBlockSelectMode = !isBlockSelectMode;
   const btn = document.getElementById('btnSelectBox');
   btn.classList.toggle('active-mode', isBlockSelectMode);
-  setStatus(isBlockSelectMode ? "Mode Blok: Seret kotak di lapang" : "Mode Geser Titik");
+  setStatus(isBlockSelectMode ? "Mode Blok Aktif (Seret di 2D/5D)" : "Mode Geser Titik");
 });
 
-function getFacingToDantonAngle(memberX, memberY, dantonX, dantonY) {
-  const dx = dantonX - memberX;
-  const dz = dantonY - memberY;
+function getTargetPointCoords() {
+  const zBox = getSpecialZoneRect();
+  if (competitionMode === 'LKBB') {
+    const danton = scenes[currentSceneIdx]?.members.find(item => item.id === 'D');
+    if (danton) return { x: danton.x, y: danton.y };
+  }
+  return { x: Math.round(zBox.x + zBox.width / 2), y: Math.round(zBox.y + zBox.height / 2) };
+}
+
+function getFacingToTargetAngle(memberX, memberY, targetX, targetY) {
+  const dx = targetX - memberX;
+  const dz = targetY - memberY;
   return Math.atan2(dx, dz);
 }
 
-function createDefaultFormation() {
+function createDefaultFormation(mode = competitionMode) {
   const members = [];
   const stepX = fieldW / fieldMetersL;
   const stepY = fieldH / fieldMetersW;
@@ -358,21 +430,21 @@ function createDefaultFormation() {
 
   const centerX = Math.round(fieldW / 2);
   const centerY = Math.round(fieldH / 2);
-  const dBox = getDantonBoxRect();
+  const zBox = getSpecialZoneRect();
+  const targetX = Math.round(zBox.x + zBox.width / 2);
+  const targetY = Math.round(zBox.y + zBox.height / 2);
 
-  // Danton ditempatkan tepat di dalam Kotak Danton bawah tengah (terlihat penuh!)
-  const dantonX = Math.round(dBox.x + dBox.width / 2);
-  const dantonY = Math.round(dBox.y + dBox.height / 2);
-
-  members.push({
-    id: 'D',
-    label: 'D',
-    color: '#ef4444',
-    uniform: getDefaultUniform(true),
-    x: dantonX,
-    y: dantonY,
-    facing: Math.PI
-  });
+  if (mode === 'LKBB') {
+    members.push({
+      id: 'D',
+      label: 'D',
+      color: '#ef4444',
+      uniform: getDefaultUniform(true),
+      x: targetX,
+      y: targetY,
+      facing: Math.PI
+    });
+  }
 
   const startX = centerX - (gapX * 2);
   const startY = centerY - gapY;
@@ -388,7 +460,7 @@ function createDefaultFormation() {
         uniform: getDefaultUniform(false),
         x: mx,
         y: my,
-        facing: getFacingToDantonAngle(mx, my, dantonX, dantonY)
+        facing: getFacingToTargetAngle(mx, my, targetX, targetY)
       });
       num++;
     }
@@ -416,7 +488,6 @@ function setSelectedMembers(ids) {
   }
 }
 
-// Drag-Select Kotak Blok di Kanvas 2D
 let selStartX = 0;
 let selStartY = 0;
 let isSelectingRect = false;
@@ -559,7 +630,7 @@ function buildMemberNode(m, r) {
       text: m.label,
       fontSize: fontSize,
       fontStyle: 'bold',
-      fill: uni.top === '#f8fafc' && m.id !== 'D' ? '#ffffff' : '#ffffff',
+      fill: '#ffffff',
       stroke: '#0f172a',
       strokeWidth: 0.3,
       width: r * 2.2,
@@ -609,15 +680,15 @@ function buildMemberNode(m, r) {
   });
 
   group.on('dragend', () => {
-    const danton = scenes[currentSceneIdx].members.find(item => item.id === 'D');
+    const targetPt = getTargetPointCoords();
     selectedMemberIds.forEach(id => {
       const target = scenes[currentSceneIdx].members.find(item => item.id === id);
       const node = memberNodes[id];
       if (target && node) {
         target.x = Math.round(node.x());
         target.y = Math.round(node.y());
-        if (target.id !== 'D' && danton && target.customFacing !== true) {
-          target.facing = getFacingToDantonAngle(target.x, target.y, danton.x, danton.y);
+        if (target.id !== 'D' && target.customFacing !== true) {
+          target.facing = getFacingToTargetAngle(target.x, target.y, targetPt.x, targetPt.y);
         }
       }
     });
@@ -665,7 +736,6 @@ function renderScene(sceneIndex, animate = true) {
   }
 }
 
-// Modal Pengaturan Warna Seragam (Topi, Baju Atasan, Celana Bawahan, Sepatu Boot)
 document.getElementById('btnUniformColor').addEventListener('click', () => {
   const sceneData = scenes[currentSceneIdx];
   const sampleMember = selectedMemberIds.length > 0
@@ -682,7 +752,7 @@ document.getElementById('btnUniformColor').addEventListener('click', () => {
 
   document.getElementById('uniformTargetText').innerText = selectedMemberIds.length > 0
     ? `Terapkan ke ${selectedMemberIds.length} titik terpilih`
-    : "Terapkan ke seluruh pasukan (kecuali Danton)";
+    : "Terapkan ke seluruh pasukan";
   document.getElementById('uniformModal').classList.remove('hidden');
 });
 
@@ -719,7 +789,7 @@ document.getElementById('btnApplyUniform').addEventListener('click', () => {
 document.getElementById('btnAddMember').addEventListener('click', () => {
   saveHistoryState();
   const nextNum = scenes[currentSceneIdx].members.length + 1;
-  const danton = scenes[currentSceneIdx].members.find(item => item.id === 'D');
+  const targetPt = getTargetPointCoords();
   const mx = Math.round(fieldW / 2);
   const my = Math.round(fieldH / 2);
 
@@ -730,7 +800,7 @@ document.getElementById('btnAddMember').addEventListener('click', () => {
     uniform: getDefaultUniform(false),
     x: mx,
     y: my,
-    facing: danton ? getFacingToDantonAngle(mx, my, danton.x, danton.y) : 0
+    facing: getFacingToTargetAngle(mx, my, targetPt.x, targetPt.y)
   };
   scenes.forEach(sc => sc.members.push(JSON.parse(JSON.stringify(newMember))));
   renderScene(currentSceneIdx, false);
@@ -784,6 +854,7 @@ document.getElementById('btnClearAll').addEventListener('click', async () => {
 
   saveHistoryState();
   scenes = [{ name: "Hitungan 1", members: [] }];
+  modeStore[competitionMode].scenes = scenes;
   currentSceneIdx = 0;
   setSelectedMembers([]);
   rebuildCanvas();
@@ -792,11 +863,12 @@ document.getElementById('btnClearAll').addEventListener('click', async () => {
 });
 
 document.getElementById('btnResetPos').addEventListener('click', async () => {
-  const ok = await showPopup("Reset Formasi", "Kembalikan ke formasi awal (Danton di kotak D & 15 pasukan menghadap Danton)?", { isConfirm: true });
+  const ok = await showPopup("Reset Formasi", `Kembalikan ke formasi awal mode ${competitionMode}?`, { isConfirm: true });
   if (!ok) return;
 
   saveHistoryState();
-  scenes = [{ name: "Hitungan 1", members: createDefaultFormation() }];
+  scenes = [{ name: "Hitungan 1", members: createDefaultFormation(competitionMode) }];
+  modeStore[competitionMode].scenes = scenes;
   currentSceneIdx = 0;
   setSelectedMembers([]);
   rebuildCanvas();
@@ -805,12 +877,39 @@ document.getElementById('btnResetPos').addEventListener('click', async () => {
 });
 
 // ============================================================================
-// BAGIAN 7: MODE SIMULASI 5D RINGAN (DRAG ORANG LANGSUNG, SERAGAM & HAPTIC)
+// BAGIAN 7: MODE SIMULASI 5D REALISTIS & RINGAN (BLOK 5D, SERAGAM & TIANG)
 // ============================================================================
-function triggerHaptic5D(ms = 18) {
+function triggerHaptic5D(ms = 16) {
   if (navigator.vibrate) {
     try { navigator.vibrate(ms); } catch (e) {}
   }
+}
+
+function createRealisticGrassTexture() {
+  if (threeGrassTexture) return threeGrassTexture;
+  const c = document.createElement('canvas');
+  c.width = 256;
+  c.height = 256;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#1b4332';
+  ctx.fillRect(0, 0, 256, 256);
+
+  ctx.fillStyle = 'rgba(45, 106, 79, 0.32)';
+  ctx.fillRect(0, 0, 128, 256);
+
+  for (let i = 0; i < 1800; i++) {
+    const x = Math.random() * 256;
+    const y = Math.random() * 256;
+    ctx.fillStyle = i % 2 === 0 ? 'rgba(82, 183, 136, 0.16)' : 'rgba(8, 28, 21, 0.2)';
+    ctx.fillRect(x, y, 2, 2);
+  }
+
+  threeGrassTexture = new THREE.CanvasTexture(c);
+  threeGrassTexture.wrapS = THREE.RepeatWrapping;
+  threeGrassTexture.wrapT = THREE.RepeatWrapping;
+  threeGrassTexture.repeat.set(6, 4);
+  return threeGrassTexture;
 }
 
 document.getElementById('btnToggle5D').addEventListener('click', () => {
@@ -821,20 +920,20 @@ document.getElementById('btnToggle5D').addEventListener('click', () => {
 
   is5DMode = !is5DMode;
   const wrapper2D = document.getElementById('fieldWrapper2D');
-  const c5d = document.getElementById('canvas-5d-container');
+  const wrapper5D = document.getElementById('wrapper5D');
   const camConsole = document.getElementById('cameraConsole5D');
   const btn = document.getElementById('btnToggle5D');
 
   if (is5DMode) {
     wrapper2D.classList.add('hidden');
-    c5d.classList.remove('hidden');
+    wrapper5D.classList.remove('hidden');
     camConsole.classList.remove('hidden');
     btn.innerText = '🗺️ 2D';
     init5DScene();
-    triggerHaptic5D(25);
-    setStatus("Mode 5D Aktif (Geser orang langsung)");
+    triggerHaptic5D(22);
+    setStatus("Mode 5D Realistis Aktif");
   } else {
-    c5d.classList.add('hidden');
+    wrapper5D.classList.add('hidden');
     camConsole.classList.add('hidden');
     wrapper2D.classList.remove('hidden');
     btn.innerText = '✨ 5D';
@@ -849,8 +948,8 @@ function updateCamera5DPosition() {
   const x = camDistance * Math.sin(camElevation) * Math.sin(camAzimuth);
   const y = camDistance * Math.cos(camElevation);
   const z = camDistance * Math.sin(camElevation) * Math.cos(camAzimuth);
-  threeCamera.position.set(x, Math.max(2, y), z);
-  threeCamera.lookAt(0, 0, 0);
+  threeCamera.position.set(x, Math.max(1.8, y), z);
+  threeCamera.lookAt(0, 0.5, 0);
 }
 
 document.querySelectorAll('.cam-btn[data-view]').forEach(btn => {
@@ -860,17 +959,17 @@ document.querySelectorAll('.cam-btn[data-view]').forEach(btn => {
     btn.classList.add('active');
 
     if (view === 'lomba') {
-      camAzimuth = 0.25;
-      camElevation = 0.88;
+      camAzimuth = 0.28;
+      camElevation = 0.92;
     } else if (view === 'juri') {
       camAzimuth = Math.PI / 2;
-      camElevation = 0.82;
+      camElevation = 0.85;
     } else if (view === 'belakang') {
       camAzimuth = -Math.PI / 2;
-      camElevation = 0.82;
+      camElevation = 0.85;
     } else if (view === 'danton') {
       camAzimuth = 0;
-      camElevation = 0.82;
+      camElevation = 0.85;
     } else if (view === 'atas') {
       camAzimuth = 0;
       camElevation = 0.05;
@@ -880,7 +979,7 @@ document.querySelectorAll('.cam-btn[data-view]').forEach(btn => {
 });
 
 document.getElementById('btnCamZoomIn').addEventListener('click', () => {
-  camDistance = Math.max(10, camDistance - 3);
+  camDistance = Math.max(9, camDistance - 3);
   updateCamera5DPosition();
 });
 
@@ -892,14 +991,14 @@ document.getElementById('btnCamZoomOut').addEventListener('click', () => {
 function applyFacingDirection(mode) {
   saveHistoryState();
   const sceneData = scenes[currentSceneIdx];
-  const danton = sceneData.members.find(m => m.id === 'D');
+  const targetPt = getTargetPointCoords();
   const targets = selectedMemberIds.length > 0
     ? sceneData.members.filter(m => selectedMemberIds.includes(m.id))
     : sceneData.members;
 
   targets.forEach(m => {
-    if (mode === 'danton' && danton && m.id !== 'D') {
-      m.facing = getFacingToDantonAngle(m.x, m.y, danton.x, danton.y);
+    if (mode === 'target' && m.id !== 'D') {
+      m.facing = getFacingToTargetAngle(m.x, m.y, targetPt.x, targetPt.y);
       m.customFacing = false;
     } else if (mode === 'dp') {
       m.facing = Math.PI / 2;
@@ -935,39 +1034,51 @@ document.getElementById('btnFaceRotate').addEventListener('click', () => {
 
 function init5DScene() {
   const container = document.getElementById('canvas-5d-container');
+  const totalH = fieldH + DANTON_AREA_H;
   container.style.width = fieldW + 'px';
-  container.style.height = (fieldH + DANTON_AREA_H) + 'px';
+  container.style.height = totalH + 'px';
 
   if (!threeRenderer) {
     threeScene = new THREE.Scene();
     threeScene.background = new THREE.Color(0x0b1324);
-    threeScene.fog = new THREE.FogExp2(0x0b1324, 0.011); // Efek kedalaman atmosfer ringan
+    threeScene.fog = new THREE.FogExp2(0x0b1324, 0.009);
 
-    threeCamera = new THREE.PerspectiveCamera(40, fieldW / (fieldH + DANTON_AREA_H), 0.1, 200);
+    threeCamera = new THREE.PerspectiveCamera(40, fieldW / totalH, 0.1, 220);
     camDistance = Math.max(fieldMetersL, fieldMetersW) * 1.1;
     updateCamera5DPosition();
 
-    // Renderer ringan (tanpa antialias berat & pixelRatio dibatasi 1.25 untuk HP/PC)
-    threeRenderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' });
-    threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
-    threeRenderer.setSize(fieldW, fieldH + DANTON_AREA_H);
+    threeRenderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: 'default',
+      preserveDrawingBuffer: true
+    });
+    threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    threeRenderer.setSize(fieldW, totalH);
     container.innerHTML = '';
     container.appendChild(threeRenderer.domElement);
 
-    const hemiLight = new THREE.HemisphereLight(0xf8fafc, 0x1e293b, 0.88);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.85);
     threeScene.add(hemiLight);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.65);
-    dirLight.position.set(12, 24, 14);
-    threeScene.add(dirLight);
 
-    // Interaksi 5D: Sentuh Figur = Geser Posisi Orang, Sentuh Lapang = Putar Kamera
+    const sunLight = new THREE.DirectionalLight(0xfffbeb, 0.78);
+    sunLight.position.set(14, 28, 16);
+    threeScene.add(sunLight);
+
+    const rimLight = new THREE.DirectionalLight(0x93c5fd, 0.35);
+    rimLight.position.set(-15, 12, -14);
+    threeScene.add(rimLight);
+
     let isDraggingCam = false;
+    let isBlocking5D = false;
+    let blockStart5D = { x: 0, y: 0 };
     let draggedMemberId = null;
     let dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     let dragStart3DPositions = {};
     let dragOriginPoint = new THREE.Vector3();
     let prevPointerX = 0;
     let prevPointerY = 0;
+
+    const selBoxEl = document.getElementById('selectionBox5D');
 
     const getRaycasterFromEvent = (e) => {
       const rect = threeRenderer.domElement.getBoundingClientRect();
@@ -981,6 +1092,19 @@ function init5DScene() {
     };
 
     threeRenderer.domElement.addEventListener('pointerdown', (e) => {
+      const rect = threeRenderer.domElement.getBoundingClientRect();
+
+      if (isBlockSelectMode) {
+        isBlocking5D = true;
+        blockStart5D = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        selBoxEl.style.left = blockStart5D.x + 'px';
+        selBoxEl.style.top = blockStart5D.y + 'px';
+        selBoxEl.style.width = '0px';
+        selBoxEl.style.height = '0px';
+        selBoxEl.classList.remove('hidden');
+        return;
+      }
+
       const rc = getRaycasterFromEvent(e);
       const allMeshes = [];
       Object.entries(threeMembers).forEach(([id, group]) => {
@@ -1019,6 +1143,17 @@ function init5DScene() {
 
     window.addEventListener('pointermove', (e) => {
       if (!is5DMode) return;
+      const rect = threeRenderer.domElement.getBoundingClientRect();
+
+      if (isBlocking5D) {
+        const curX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
+        const curY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+        selBoxEl.style.left = Math.min(blockStart5D.x, curX) + 'px';
+        selBoxEl.style.top = Math.min(blockStart5D.y, curY) + 'px';
+        selBoxEl.style.width = Math.abs(curX - blockStart5D.x) + 'px';
+        selBoxEl.style.height = Math.abs(curY - blockStart5D.y) + 'px';
+        return;
+      }
 
       if (draggedMemberId) {
         const rc = getRaycasterFromEvent(e);
@@ -1058,12 +1193,39 @@ function init5DScene() {
     });
 
     window.addEventListener('pointerup', () => {
+      if (isBlocking5D) {
+        isBlocking5D = false;
+        const boxLeft = parseFloat(selBoxEl.style.left);
+        const boxTop = parseFloat(selBoxEl.style.top);
+        const boxRight = boxLeft + parseFloat(selBoxEl.style.width);
+        const boxBottom = boxTop + parseFloat(selBoxEl.style.height);
+        selBoxEl.classList.add('hidden');
+
+        const matched = [];
+        const rect = threeRenderer.domElement.getBoundingClientRect();
+        Object.entries(threeMembers).forEach(([id, fig]) => {
+          const worldPos = new THREE.Vector3(fig.position.x, 0.8, fig.position.z);
+          worldPos.project(threeCamera);
+          const screenX = (worldPos.x * 0.5 + 0.5) * rect.width;
+          const screenY = (-worldPos.y * 0.5 + 0.5) * rect.height;
+          if (screenX >= boxLeft && screenX <= boxRight && screenY >= boxTop && screenY <= boxBottom) {
+            matched.push(id);
+          }
+        });
+
+        setSelectedMembers(matched);
+        if (matched.length > 0) {
+          setStatus(`${matched.length} titik terblok di 5D`);
+          triggerHaptic5D(20);
+        }
+      }
+
       if (draggedMemberId) {
-        const danton = scenes[currentSceneIdx].members.find(item => item.id === 'D');
+        const targetPt = getTargetPointCoords();
         selectedMemberIds.forEach(id => {
           const target = scenes[currentSceneIdx].members.find(item => item.id === id);
-          if (target && target.id !== 'D' && danton && target.customFacing !== true) {
-            target.facing = getFacingToDantonAngle(target.x, target.y, danton.x, danton.y);
+          if (target && target.id !== 'D' && target.customFacing !== true) {
+            target.facing = getFacingToTargetAngle(target.x, target.y, targetPt.x, targetPt.y);
           }
         });
         draggedMemberId = null;
@@ -1095,18 +1257,16 @@ function create5DHumanFigure(member) {
   const group = new THREE.Group();
   const uni = normalizeMemberUniform(member);
 
-  // Bayangan Lantai Lembut (Ringan tanpa ShadowMap berat)
   const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(0.28, 12),
+    new THREE.CircleGeometry(0.3, 14),
     new THREE.MeshBasicMaterial({ color: 0x051b11, transparent: true, opacity: 0.45 })
   );
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.02;
   group.add(shadow);
 
-  // Cincin Penanda Seleksi Kuning
   const selRing = new THREE.Mesh(
-    new THREE.RingGeometry(0.26, 0.36, 16),
+    new THREE.RingGeometry(0.28, 0.38, 18),
     new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide })
   );
   selRing.rotation.x = -Math.PI / 2;
@@ -1114,83 +1274,189 @@ function create5DHumanFigure(member) {
   selRing.visible = selectedMemberIds.includes(member.id);
   group.add(selRing);
 
-  // Baju Atasan
-  const torso = new THREE.Mesh(
-    new THREE.BoxGeometry(0.36, 0.54, 0.2),
+  const chest = new THREE.Mesh(
+    new THREE.BoxGeometry(0.38, 0.34, 0.21),
     new THREE.MeshLambertMaterial({ color: uni.top })
   );
-  torso.position.y = 0.86;
-  group.add(torso);
+  chest.position.y = 1.0;
+  group.add(chest);
 
-  // Kepala
+  const waist = new THREE.Mesh(
+    new THREE.BoxGeometry(0.31, 0.22, 0.18),
+    new THREE.MeshLambertMaterial({ color: uni.top })
+  );
+  waist.position.y = 0.73;
+  group.add(waist);
+
+  const belt = new THREE.Mesh(
+    new THREE.BoxGeometry(0.33, 0.05, 0.195),
+    new THREE.MeshLambertMaterial({ color: 0xf8fafc })
+  );
+  belt.position.y = 0.64;
+  group.add(belt);
+
+  const neck = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.06, 0.07, 0.08, 8),
+    new THREE.MeshLambertMaterial({ color: 0xfbbf24 })
+  );
+  neck.position.y = 1.2;
+  group.add(neck);
+
   const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.14, 10, 10),
+    new THREE.SphereGeometry(0.135, 12, 12),
     new THREE.MeshLambertMaterial({ color: 0xfcd34d })
   );
-  head.position.y = 1.28;
+  head.position.y = 1.33;
   group.add(head);
 
-  // Topi Pet & Visor Depan
-  const cap = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.14, 0.14, 0.08, 10),
+  const capCrown = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.165, 0.135, 0.08, 12),
     new THREE.MeshLambertMaterial({ color: uni.cap })
   );
-  cap.position.y = 1.38;
-  group.add(cap);
+  capCrown.position.y = 1.44;
+  group.add(capCrown);
 
   const visor = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, 0.03, 0.12),
-    new THREE.MeshLambertMaterial({ color: 0x0f172a })
+    new THREE.BoxGeometry(0.17, 0.025, 0.13),
+    new THREE.MeshPhongMaterial({ color: 0x0f172a, shininess: 60 })
   );
-  visor.position.set(0, 1.34, 0.14);
+  visor.position.set(0, 1.39, 0.14);
   group.add(visor);
 
-  // Celana Bawahan & Sepatu Boot Terpisah (Warna Custom)
-  const legGeo = new THREE.BoxGeometry(0.13, 0.44, 0.14);
+  const emblem = new THREE.Mesh(
+    new THREE.SphereGeometry(0.025, 6, 6),
+    new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+  );
+  emblem.position.set(0, 1.44, 0.16);
+  group.add(emblem);
+
+  const legGeo = new THREE.CylinderGeometry(0.075, 0.062, 0.46, 8);
   const legMat = new THREE.MeshLambertMaterial({ color: uni.bottom });
-  const bootGeo = new THREE.BoxGeometry(0.14, 0.16, 0.19);
-  const bootMat = new THREE.MeshLambertMaterial({ color: uni.boots });
+  const bootGeo = new THREE.BoxGeometry(0.13, 0.17, 0.21);
+  const bootMat = new THREE.MeshPhongMaterial({ color: uni.boots, shininess: 70 });
 
   const leftLegGroup = new THREE.Group();
-  leftLegGroup.position.set(-0.1, 0.58, 0);
+  leftLegGroup.position.set(-0.095, 0.62, 0);
   const leftPants = new THREE.Mesh(legGeo, legMat);
-  leftPants.position.y = -0.22;
+  leftPants.position.y = -0.23;
   const leftBoot = new THREE.Mesh(bootGeo, bootMat);
-  leftBoot.position.set(0, -0.5, 0.02);
+  leftBoot.position.set(0, -0.52, 0.03);
   leftLegGroup.add(leftPants, leftBoot);
   group.add(leftLegGroup);
 
   const rightLegGroup = new THREE.Group();
-  rightLegGroup.position.set(0.1, 0.58, 0);
+  rightLegGroup.position.set(0.095, 0.62, 0);
   const rightPants = new THREE.Mesh(legGeo, legMat);
-  rightPants.position.y = -0.22;
+  rightPants.position.y = -0.23;
   const rightBoot = new THREE.Mesh(bootGeo, bootMat);
-  rightBoot.position.set(0, -0.5, 0.02);
+  rightBoot.position.set(0, -0.52, 0.03);
   rightLegGroup.add(rightPants, rightBoot);
   group.add(rightLegGroup);
 
-  // Lengan Baju Atasan
-  const armGeo = new THREE.BoxGeometry(0.1, 0.5, 0.11);
+  const armGeo = new THREE.CylinderGeometry(0.052, 0.045, 0.46, 8);
   const armMat = new THREE.MeshLambertMaterial({ color: uni.top });
+  const handGeo = new THREE.SphereGeometry(0.048, 8, 8);
+  const handMat = new THREE.MeshLambertMaterial({ color: 0xfcd34d });
 
-  const leftArm = new THREE.Mesh(armGeo, armMat);
-  leftArm.position.set(-0.24, 0.85, 0);
-  group.add(leftArm);
+  const leftArmGroup = new THREE.Group();
+  leftArmGroup.position.set(-0.24, 1.12, 0);
+  const leftArmMesh = new THREE.Mesh(armGeo, armMat);
+  leftArmMesh.position.y = -0.23;
+  const leftHand = new THREE.Mesh(handGeo, handMat);
+  leftHand.position.y = -0.48;
+  leftArmGroup.add(leftArmMesh, leftHand);
+  group.add(leftArmGroup);
 
-  const rightArm = new THREE.Mesh(armGeo, armMat);
-  rightArm.position.set(0.24, 0.85, 0);
-  group.add(rightArm);
+  const rightArmGroup = new THREE.Group();
+  rightArmGroup.position.set(0.24, 1.12, 0);
+  const rightArmMesh = new THREE.Mesh(armGeo, armMat);
+  rightArmMesh.position.y = -0.23;
+  const rightHand = new THREE.Mesh(handGeo, handMat);
+  rightHand.position.y = -0.48;
+  rightArmGroup.add(rightArmMesh, rightHand);
+  group.add(rightArmGroup);
 
   group.userData = {
     selRing,
     leftLeg: leftLegGroup,
     rightLeg: rightLegGroup,
-    leftArm,
-    rightArm,
+    leftArm: leftArmGroup,
+    rightArm: rightArmGroup,
     targetPos: new THREE.Vector3(),
     memberId: member.id
   };
   return group;
+}
+
+function createRealisticFlagpole5D() {
+  const flagGroup = new THREE.Group();
+  const zPos = (fieldMetersW / 2) + 0.85;
+
+  const step1 = new THREE.Mesh(
+    new THREE.BoxGeometry(2.2, 0.16, 1.8),
+    new THREE.MeshLambertMaterial({ color: 0xe2e8f0 })
+  );
+  step1.position.set(0, 0.08, zPos);
+  flagGroup.add(step1);
+
+  const step2 = new THREE.Mesh(
+    new THREE.BoxGeometry(1.5, 0.16, 1.2),
+    new THREE.MeshLambertMaterial({ color: 0xcbd5e1 })
+  );
+  step2.position.set(0, 0.24, zPos);
+  flagGroup.add(step2);
+
+  const step3 = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.2, 0.7),
+    new THREE.MeshLambertMaterial({ color: 0x94a3b8 })
+  );
+  step3.position.set(0, 0.42, zPos);
+  flagGroup.add(step3);
+
+  const poleHeight = 7.5;
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.045, 0.075, poleHeight, 12),
+    new THREE.MeshPhongMaterial({ color: 0xf1f5f9, shininess: 90 })
+  );
+  pole.position.set(0, 0.5 + poleHeight / 2, zPos);
+  flagGroup.add(pole);
+
+  const finial = new THREE.Mesh(
+    new THREE.SphereGeometry(0.14, 12, 12),
+    new THREE.MeshPhongMaterial({ color: 0xfacc15, shininess: 100 })
+  );
+  finial.position.set(0, 0.5 + poleHeight + 0.08, zPos);
+  flagGroup.add(finial);
+
+  const rope = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.01, 0.01, poleHeight - 0.3, 6),
+    new THREE.MeshBasicMaterial({ color: 0xf8fafc })
+  );
+  rope.position.set(0.08, 0.5 + poleHeight / 2, zPos);
+  flagGroup.add(rope);
+
+  const flagW = 2.1;
+  const flagH = 1.4;
+  const flagGeo = new THREE.PlaneGeometry(flagW, flagH, 12, 6);
+  const flagCanvas = document.createElement('canvas');
+  flagCanvas.width = 128;
+  flagCanvas.height = 64;
+  const fCtx = flagCanvas.getContext('2d');
+  fCtx.fillStyle = '#dc2626';
+  fCtx.fillRect(0, 0, 128, 32);
+  fCtx.fillStyle = '#ffffff';
+  fCtx.fillRect(0, 32, 128, 32);
+
+  const flagTex = new THREE.CanvasTexture(flagCanvas);
+  const flagMesh = new THREE.Mesh(
+    flagGeo,
+    new THREE.MeshLambertMaterial({ map: flagTex, side: THREE.DoubleSide })
+  );
+  flagMesh.position.set(flagW / 2 + 0.06, 0.5 + poleHeight - flagH / 2 - 0.15, zPos);
+  flagGroup.add(flagMesh);
+
+  threeFlagMesh = flagMesh;
+  return flagGroup;
 }
 
 function update5DSelectionHighlight() {
@@ -1221,16 +1487,24 @@ function rebuild5DFieldAndTroops() {
     }
   }
   threeMembers = {};
+  threeFlagMesh = null;
 
-  // Lantai Lapangan Utama (22m x 15m)
+  const outerGround = new THREE.Mesh(
+    new THREE.PlaneGeometry(fieldMetersL + 16, fieldMetersW + 16),
+    new THREE.MeshLambertMaterial({ color: 0x1e293b })
+  );
+  outerGround.rotation.x = -Math.PI / 2;
+  outerGround.position.y = -0.02;
+  threeScene.add(outerGround);
+
+  const grassTex = createRealisticGrassTexture();
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(fieldMetersL, fieldMetersW),
-    new THREE.MeshLambertMaterial({ color: 0x1b4332 })
+    new THREE.MeshLambertMaterial({ map: grassTex })
   );
   plane.rotation.x = -Math.PI / 2;
   threeScene.add(plane);
 
-  // Garis Tepian Putih Utama Lapangan (22m x 15m Utuh)
   const mainFieldBorder = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.PlaneGeometry(fieldMetersL, fieldMetersW)),
     new THREE.LineBasicMaterial({ color: 0xffffff })
@@ -1239,22 +1513,25 @@ function rebuild5DFieldAndTroops() {
   mainFieldBorder.position.y = 0.015;
   threeScene.add(mainFieldBorder);
 
-  // Kotak Khusus Danton dengan 4 Garis Tepi Utuh di Luar Garis Bawah Tengah (+Z)
-  const dantonBox = new THREE.Mesh(
-    new THREE.PlaneGeometry(1.8, 1.5),
-    new THREE.MeshLambertMaterial({ color: 0x1b4332 })
-  );
-  dantonBox.rotation.x = -Math.PI / 2;
-  dantonBox.position.set(0, 0.01, (fieldMetersW / 2) + 0.75);
-  threeScene.add(dantonBox);
+  if (competitionMode === 'LKBB') {
+    const dantonBox = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.8, 1.5),
+      new THREE.MeshLambertMaterial({ map: grassTex })
+    );
+    dantonBox.rotation.x = -Math.PI / 2;
+    dantonBox.position.set(0, 0.01, (fieldMetersW / 2) + 0.75);
+    threeScene.add(dantonBox);
 
-  const dantonBorder = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.8, 1.5)),
-    new THREE.LineBasicMaterial({ color: 0xffffff })
-  );
-  dantonBorder.rotation.x = -Math.PI / 2;
-  dantonBorder.position.set(0, 0.018, (fieldMetersW / 2) + 0.75);
-  threeScene.add(dantonBorder);
+    const dantonBorder = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.8, 1.5)),
+      new THREE.LineBasicMaterial({ color: 0xffffff })
+    );
+    dantonBorder.rotation.x = -Math.PI / 2;
+    dantonBorder.position.set(0, 0.018, (fieldMetersW / 2) + 0.75);
+    threeScene.add(dantonBorder);
+  } else {
+    threeScene.add(createRealisticFlagpole5D());
+  }
 
   const maxDim = Math.max(fieldMetersL, fieldMetersW);
   const gridHelper = new THREE.GridHelper(maxDim, maxDim, 0xffffff, 0x2d6a4f);
@@ -1303,6 +1580,16 @@ function start5DLoop() {
     const t = elapsed * 10;
     const sceneData = scenes[currentSceneIdx];
 
+    if (threeFlagMesh) {
+      const posAttr = threeFlagMesh.geometry.attributes.position;
+      for (let i = 0; i < posAttr.count; i++) {
+        const vx = posAttr.getX(i);
+        const wave = Math.sin(vx * 3.5 - elapsed * 5.5) * 0.08 * ((vx + 1.05) / 2.1);
+        posAttr.setZ(i, wave);
+      }
+      posAttr.needsUpdate = true;
+    }
+
     Object.entries(threeMembers).forEach(([id, fig], idx) => {
       const target = fig.userData.targetPos;
       const dx = target.x - fig.position.x;
@@ -1312,18 +1599,18 @@ function start5DLoop() {
       if (dist > 0.03) {
         fig.position.x += dx * 0.08;
         fig.position.z += dz * 0.08;
-        fig.position.y = Math.abs(Math.sin(t)) * 0.045; // Efek langkah tegap realistis
+        fig.position.y = Math.abs(Math.sin(t)) * 0.045;
         fig.rotation.y = Math.atan2(dx, dz);
 
-        const swing = Math.sin(t) * 0.65;
+        const swing = Math.sin(t) * 0.68;
         fig.userData.leftLeg.rotation.x = swing;
         fig.userData.rightLeg.rotation.x = -swing;
-        fig.userData.leftArm.rotation.x = -swing * 0.85;
-        fig.userData.rightArm.rotation.x = swing * 0.85;
+        fig.userData.leftArm.rotation.x = -swing * 0.9;
+        fig.userData.rightArm.rotation.x = swing * 0.9;
       } else {
         fig.position.x = target.x;
         fig.position.z = target.z;
-        fig.position.y = Math.sin(elapsed * 2 + idx) * 0.008; // Gerak napas siap siaga alami
+        fig.position.y = Math.sin(elapsed * 2 + idx) * 0.007;
 
         const mData = sceneData ? sceneData.members.find(item => item.id === id) : null;
         fig.rotation.y = (mData && mData.facing !== undefined) ? mData.facing : 0;
@@ -1375,7 +1662,6 @@ audioInput.addEventListener('change', (e) => {
   setStatus("File audio siap");
 });
 
-// Tombol Rekam Suara Danton Live via Mikrofon
 btnRecordVoice.addEventListener('click', async () => {
   if (!isRecordingVoice) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1397,18 +1683,18 @@ btnRecordVoice.addEventListener('click', async () => {
         const voiceBlob = new Blob(voiceChunks, { type: 'audio/webm' });
         const voiceUrl = URL.createObjectURL(voiceBlob);
         attachAudioBlobOrFile(voiceUrl, "🎙️ Rekaman Aba-aba Danton");
-        setStatus("Suara Danton tersimpan");
-        triggerHaptic5D(30);
+        setStatus("Suara tersimpan");
+        triggerHaptic5D(25);
       };
 
       mediaRecorderVoice.start();
       isRecordingVoice = true;
       btnRecordVoice.classList.add('recording');
       btnRecordVoice.innerText = '⏹ Stop';
-      setStatus("Merekam suara Danton...");
-      triggerHaptic5D(20);
+      setStatus("Merekam suara...");
+      triggerHaptic5D(18);
     } catch (err) {
-      showPopup("Izin Mikrofon Ditolak", "Izinkan akses mikrofon di browser untuk merekam aba-aba Danton.");
+      showPopup("Izin Mikrofon Ditolak", "Izinkan akses mikrofon di browser untuk merekam aba-aba.");
     }
   } else {
     if (mediaRecorderVoice && mediaRecorderVoice.state !== 'inactive') {
@@ -1416,7 +1702,7 @@ btnRecordVoice.addEventListener('click', async () => {
     }
     isRecordingVoice = false;
     btnRecordVoice.classList.remove('recording');
-    btnRecordVoice.innerText = '🎙️ Rekam';
+    btnRecordVoice.innerText = '🎙️ Suara';
   }
 });
 
@@ -1431,7 +1717,7 @@ document.getElementById('btnRemoveAudio').addEventListener('click', () => {
 });
 
 // ============================================================================
-// BAGIAN 9: TIMELINE HITUNGAN, PLAY ANIMASI & DOWNLOAD VIDEO LANDSCAPE 16:9
+// BAGIAN 9: TIMELINE HITUNGAN (RENAME/HAPUS), PLAY & EXPORT VIDEO HD 1080P
 // ============================================================================
 function renderTimelineUI() {
   const listEl = document.getElementById('sceneList');
@@ -1443,6 +1729,9 @@ function renderTimelineUI() {
     card.innerText = sc.name;
     card.onclick = () => {
       if (!isPlaying) renderScene(idx);
+    };
+    card.ondblclick = () => {
+      if (!isPlaying) renameActiveScene();
     };
     listEl.appendChild(card);
   });
@@ -1459,6 +1748,48 @@ document.getElementById('btnAddScene').addEventListener('click', () => {
   setStatus(`+ Hitungan ${scenes.length}`);
 });
 
+async function renameActiveScene() {
+  const activeScene = scenes[currentSceneIdx];
+  if (!activeScene) return;
+
+  const newName = await showPopup(
+    "Ubah Nama Hitungan",
+    "Masukkan nama hitungan atau gerakan (maks. 18 huruf):",
+    { isPrompt: true, defaultValue: activeScene.name }
+  );
+
+  if (newName === null || newName === "") return;
+
+  saveHistoryState();
+  activeScene.name = newName;
+  renderTimelineUI();
+  setStatus(`Hitungan: ${newName}`);
+}
+
+document.getElementById('btnRenameScene').addEventListener('click', () => {
+  if (!isPlaying) renameActiveScene();
+});
+
+document.getElementById('btnDeleteScene').addEventListener('click', async () => {
+  if (isPlaying) return;
+  if (scenes.length <= 1) {
+    showPopup("Tidak Dapat Dihapus", "Minimal harus tersisa 1 Hitungan di dalam timeline.");
+    return;
+  }
+
+  const targetName = scenes[currentSceneIdx].name;
+  const ok = await showPopup("Hapus Hitungan", `Hapus "${targetName}" dari timeline?`, { isConfirm: true });
+  if (!ok) return;
+
+  saveHistoryState();
+  scenes.splice(currentSceneIdx, 1);
+  modeStore[competitionMode].scenes = scenes;
+  currentSceneIdx = Math.max(0, currentSceneIdx - 1);
+  rebuildCanvas();
+  if (is5DMode) rebuild5DFieldAndTroops();
+  setStatus(`${targetName} dihapus`);
+});
+
 async function runFormationPlayback() {
   isPlaying = true;
   if (audioElement) {
@@ -1472,7 +1803,7 @@ async function runFormationPlayback() {
   for (let i = 1; i < scenes.length; i++) {
     currentSceneIdx = i;
     renderTimelineUI();
-    if (is5DMode) triggerHaptic5D(20);
+    if (is5DMode) triggerHaptic5D(18);
 
     scenes[i].members.forEach(m => {
       if (memberNodes[m.id]) {
@@ -1517,14 +1848,22 @@ document.getElementById('btnExportVideo').addEventListener('click', async () => 
     return;
   }
 
-  setStatus("Merekam video 16:9...");
+  setStatus("Merekam Full HD 1080p...");
 
-  const videoW = 1280;
-  const videoH = 720;
+  const videoW = 1920;
+  const videoH = 1080;
   const recordCanvas = document.createElement('canvas');
   recordCanvas.width = videoW;
   recordCanvas.height = videoH;
   const ctx = recordCanvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  const prevPixelRatio = threeRenderer ? threeRenderer.getPixelRatio() : 1;
+  if (is5DMode && threeRenderer) {
+    threeRenderer.setPixelRatio(2.5);
+    threeRenderer.render(threeScene, threeCamera);
+  }
 
   const srcW = stage.width();
   const srcH = stage.height();
@@ -1534,7 +1873,7 @@ document.getElementById('btnExportVideo').addEventListener('click', async () => 
     ctx.fillStyle = '#0b1324';
     ctx.fillRect(0, 0, videoW, videoH);
 
-    const scale = Math.min((videoW - 64) / srcW, (videoH - 64) / srcH);
+    const scale = Math.min((videoW - 80) / srcW, (videoH - 80) / srcH);
     const drawW = srcW * scale;
     const drawH = srcH * scale;
     const offsetX = (videoW - drawW) / 2;
@@ -1574,7 +1913,10 @@ document.getElementById('btnExportVideo').addEventListener('click', async () => 
     ext = 'webm';
   }
 
-  const recorder = new MediaRecorder(videoStream, { mimeType });
+  const recorder = new MediaRecorder(videoStream, {
+    mimeType,
+    videoBitsPerSecond: 8000000
+  });
   const chunks = [];
 
   recorder.ondataavailable = (e) => {
@@ -1583,16 +1925,19 @@ document.getElementById('btnExportVideo').addEventListener('click', async () => 
 
   recorder.onstop = () => {
     cancelAnimationFrame(animFrameId);
+    if (is5DMode && threeRenderer) {
+      threeRenderer.setPixelRatio(prevPixelRatio);
+    }
     const blob = new Blob(chunks, { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const fileName = (document.getElementById('formationName').value.trim() || 'Formasi_Paskibra').replace(/\s+/g, '_');
+    const fileName = (document.getElementById('formationName').value.trim() || `Formasi_${competitionMode}`).replace(/\s+/g, '_');
     a.href = url;
-    a.download = `${fileName}.${ext}`;
+    a.download = `${fileName}_HD.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
-    setStatus("Video terunduh");
-    showPopup("Video Selesai", `Video animasi landscape 5D berhasil diunduh (${fileName}.${ext}).`);
+    setStatus("Video HD terunduh");
+    showPopup("Video HD Selesai", `Video resolusi tinggi 1080p berhasil diunduh (${fileName}_HD.${ext}).`);
   };
 
   recorder.start();
@@ -1616,11 +1961,19 @@ document.getElementById('btnSave').addEventListener('click', async () => {
     return;
   }
 
+  modeStore[competitionMode] = { scenes, currentSceneIdx };
+  const payloadData = {
+    version: 2,
+    activeMode: competitionMode,
+    LKBB: modeStore.LKBB.scenes,
+    RUKIBRA: modeStore.RUKIBRA.scenes
+  };
+
   setStatus("Menyimpan...");
   try {
     const response = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify({ action: "save", nama, dataJson: scenes })
+      body: JSON.stringify({ action: "save", nama, dataJson: payloadData })
     });
     const result = await response.json();
     if (result.status === "success") {
@@ -1661,9 +2014,25 @@ document.getElementById('savedList').addEventListener('change', (e) => {
   saveHistoryState();
   const selected = savedFormations[idx];
   document.getElementById('formationName').value = selected.nama;
-  scenes = selected.dataJson;
+
+  if (Array.isArray(selected.dataJson)) {
+    modeStore.LKBB = { scenes: selected.dataJson, currentSceneIdx: 0 };
+    modeStore.RUKIBRA = { scenes: [], currentSceneIdx: 0 };
+    competitionMode = 'LKBB';
+  } else if (selected.dataJson && selected.dataJson.version === 2) {
+    modeStore.LKBB = { scenes: selected.dataJson.LKBB || [], currentSceneIdx: 0 };
+    modeStore.RUKIBRA = { scenes: selected.dataJson.RUKIBRA || [], currentSceneIdx: 0 };
+    competitionMode = selected.dataJson.activeMode || 'LKBB';
+  }
+
+  document.getElementById('btnModeLKBB').classList.toggle('active', competitionMode === 'LKBB');
+  document.getElementById('btnModeRukibra').classList.toggle('active', competitionMode === 'RUKIBRA');
+  scenes = modeStore[competitionMode].scenes;
   currentSceneIdx = 0;
+
   setSelectedMembers([]);
+  updateFieldLabel();
+  drawFieldGrid();
   rebuildCanvas();
   if (is5DMode) rebuild5DFieldAndTroops();
   setStatus(`Dimuat: ${selected.nama}`);
@@ -1707,10 +2076,11 @@ document.getElementById('btnDeleteProject').addEventListener('click', async () =
 // ============================================================================
 window.addEventListener('DOMContentLoaded', () => {
   calculateCanvasDimensions();
-  scenes = [{
-    name: "Hitungan 1",
-    members: createDefaultFormation()
-  }];
+  modeStore.LKBB = {
+    scenes: [{ name: "Hitungan 1", members: createDefaultFormation('LKBB') }],
+    currentSceneIdx: 0
+  };
+  scenes = modeStore.LKBB.scenes;
   renderScene(0, false);
   loadSavedFormations();
 });
