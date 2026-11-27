@@ -1,7 +1,7 @@
-// ==========================================
-// KONFIGURASI API GOOGLE APPS SCRIPT
-// ==========================================
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypOugpXmLsnd_Q4dYber4O6V_xDt4JrDeCaiA-RgrirMCDtHpaJNxewlAfiMA6MhACiA/exec";
+// ============================================================================
+// BAGIAN 1: KONFIGURASI API GOOGLE APPS SCRIPT & STATE GLOBAL
+// ============================================================================
+const APPS_SCRIPT_URL = "TEMPEL_URL_WEB_APP_APPS_SCRIPT_ANDA_DI_SINI";
 
 if (typeof Konva !== 'undefined') {
   Konva.pixelRatio = 1.25;
@@ -25,20 +25,22 @@ let is3DMode = false;
 let undoStack = [];
 let redoStack = [];
 
-// Audio State
+// State Audio
 let audioElement = null;
 let audioCtx = null;
 let audioSourceNode = null;
 let audioDestNode = null;
 
-// Three.js 3D State
+// State Three.js (3D)
 let threeScene = null;
 let threeCamera = null;
 let threeRenderer = null;
 let threeMembers = {};
 let threeAnimId = null;
 
-// Inisialisasi Konva 2D
+// ============================================================================
+// BAGIAN 2: INISIALISASI KANVAS 2D KONVA & LAYER
+// ============================================================================
 const stage = new Konva.Stage({
   container: 'canvas-container',
   width: canvasW,
@@ -52,9 +54,9 @@ stage.add(bgLayer);
 stage.add(gridLayer);
 stage.add(troopLayer);
 
-// ==========================================
-// CUSTOM POP-UP MODAL (ALERT, CONFIRM & PROMPT)
-// ==========================================
+// ============================================================================
+// BAGIAN 3: CUSTOM POP-UP MODAL (NOTIFIKASI, KONFIRMASI & INPUT NAMA)
+// ============================================================================
 function showPopup(title, message, options = {}) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('customModal');
@@ -93,9 +95,9 @@ function showPopup(title, message, options = {}) {
   });
 }
 
-// ==========================================
-// UNDO & REDO
-// ==========================================
+// ============================================================================
+// BAGIAN 4: SISTEM RIWAYAT UNDO & REDO
+// ============================================================================
 function saveHistoryState() {
   undoStack.push(JSON.stringify({ scenes, currentSceneIdx }));
   if (undoStack.length > 25) undoStack.shift();
@@ -132,9 +134,9 @@ document.getElementById('btnRedo').addEventListener('click', () => {
   setStatus("Redo");
 });
 
-// ==========================================
-// UKURAN LAPANG & RADIUS TITIK PROPORSIONAL
-// ==========================================
+// ============================================================================
+// BAGIAN 5: UKURAN LAPANG, GRID METERAN & SKALA TITIK PROPORSIONAL
+// ============================================================================
 function getMemberRadius() {
   const meterPx = Math.min(canvasW / fieldMetersW, canvasH / fieldMetersL);
   return Math.max(5, Math.min(11, Math.round(meterPx * 0.38)));
@@ -227,9 +229,9 @@ document.getElementById('btnApplyField').addEventListener('click', () => {
   setStatus(`Lapang: ${l}m x ${w}m`);
 });
 
-// ==========================================
-// TOGGLE BENTUK TITIK (LINGKARAN / ORANG)
-// ==========================================
+// ============================================================================
+// BAGIAN 6: MANAJEMEN PASUKAN 2D (BENTUK LINGKARAN / ORANG, NAMA & HAPUS)
+// ============================================================================
 document.getElementById('btnToggleShape').addEventListener('click', () => {
   pointShape = pointShape === 'circle' ? 'person' : 'circle';
   document.getElementById('btnToggleShape').innerText = pointShape === 'circle' ? '👤 Orang' : '⚪ Bulat';
@@ -237,9 +239,6 @@ document.getElementById('btnToggleShape').addEventListener('click', () => {
   setStatus(pointShape === 'person' ? "Bentuk: Orang" : "Bentuk: Lingkaran");
 });
 
-// ==========================================
-// MANAJEMEN PASUKAN 2D
-// ==========================================
 function createDefaultFormation() {
   const members = [];
   const stepX = canvasW / fieldMetersW;
@@ -250,7 +249,6 @@ function createDefaultFormation() {
   const centerY = Math.round(canvasH / 2);
   const startY = centerY - (gapY * 2);
 
-  // Titik Danton berada di tengah-tengah tinggi lapangan (sejajar depan Kotak Danton di tepi kiri)
   members.push({
     id: 'D',
     label: 'D',
@@ -517,9 +515,9 @@ document.getElementById('btnResetPos').addEventListener('click', async () => {
   setStatus("Reset selesai");
 });
 
-// ==========================================
-// MODE SIMULASI 3D (GERAKAN MANUSIA VARIASI)
-// ==========================================
+// ============================================================================
+// BAGIAN 7: MODE SIMULASI 3D (THREE.JS & ANIMASI LANGKAH PASUKAN)
+// ============================================================================
 document.getElementById('btnToggle3D').addEventListener('click', () => {
   if (typeof THREE === 'undefined') {
     showPopup("Info 3D", "Library 3D belum siap. Pastikan koneksi internet aktif saat pertama membuka aplikasi.");
@@ -529,10 +527,12 @@ document.getElementById('btnToggle3D').addEventListener('click', () => {
   is3DMode = !is3DMode;
   const c2d = document.getElementById('canvas-container');
   const c3d = document.getElementById('canvas-3d-container');
+  const dantonBox = document.getElementById('dantonBox2D');
   const btn = document.getElementById('btnToggle3D');
 
   if (is3DMode) {
     c2d.classList.add('hidden');
+    if (dantonBox) dantonBox.classList.add('hidden');
     c3d.classList.remove('hidden');
     btn.innerText = '🗺️ 2D';
     init3DScene();
@@ -540,6 +540,7 @@ document.getElementById('btnToggle3D').addEventListener('click', () => {
   } else {
     c3d.classList.add('hidden');
     c2d.classList.remove('hidden');
+    if (dantonBox) dantonBox.classList.remove('hidden');
     btn.innerText = '🧊 3D';
     stop3DLoop();
     setStatus("Mode 2D Aktif");
@@ -665,7 +666,7 @@ function rebuild3DFieldAndTroops() {
   plane.rotation.x = -Math.PI / 2;
   threeScene.add(plane);
 
-  // Kotak Khusus Danton menyambung di luar garis kiri tengah lapangan (z = 0)
+  // Kotak Khusus Danton menyambung utuh di luar garis kiri tengah lapangan (z = 0)
   const dantonBox = new THREE.Mesh(
     new THREE.PlaneGeometry(1.4, 1.6),
     new THREE.MeshLambertMaterial({ color: 0x1b4332 })
@@ -673,14 +674,6 @@ function rebuild3DFieldAndTroops() {
   dantonBox.rotation.x = -Math.PI / 2;
   dantonBox.position.set(-(fieldMetersW / 2) - 0.7, 0.01, 0);
   threeScene.add(dantonBox);
-
-  const dantonEdges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.4, 1.6)),
-    new THREE.LineBasicMaterial({ color: 0xffffff })
-  );
-  dantonEdges.rotation.x = -Math.PI / 2;
-  dantonEdges.position.set(-(fieldMetersW / 2) - 0.7, 0.02, 0);
-  threeScene.add(dantonEdges);
 
   const maxDim = Math.max(fieldMetersW, fieldMetersL);
   const gridHelper = new THREE.GridHelper(maxDim, maxDim, 0xffffff, 0x2d6a4f);
@@ -764,9 +757,9 @@ function stop3DLoop() {
   }
 }
 
-// ==========================================
-// AUDIO / LAGU IRINGAN
-// ==========================================
+// ============================================================================
+// BAGIAN 8: AUDIO / LAGU IRINGAN
+// ============================================================================
 const audioInput = document.getElementById('audioInput');
 
 document.getElementById('btnAudio').addEventListener('click', () => {
@@ -800,9 +793,9 @@ document.getElementById('btnRemoveAudio').addEventListener('click', () => {
   setStatus("Audio dihapus");
 });
 
-// ==========================================
-// TIMELINE, PLAY & DOWNLOAD VIDEO
-// ==========================================
+// ============================================================================
+// BAGIAN 9: TIMELINE HITUNGAN, PLAY ANIMASI & DOWNLOAD VIDEO
+// ============================================================================
 function renderTimelineUI() {
   const listEl = document.getElementById('sceneList');
   listEl.innerHTML = '';
@@ -957,9 +950,9 @@ document.getElementById('btnExportVideo').addEventListener('click', async () => 
   recorder.stop();
 });
 
-// ==========================================
-// DATABASE GOOGLE APPS SCRIPT
-// ==========================================
+// ============================================================================
+// BAGIAN 10: KONEKSI DATABASE GOOGLE APPS SCRIPT (SIMPAN, MUAT & HAPUS)
+// ============================================================================
 function setStatus(msg) {
   const el = document.getElementById('statusText');
   if (el) el.innerText = msg;
@@ -1057,9 +1050,9 @@ document.getElementById('btnDeleteProject').addEventListener('click', async () =
   }
 });
 
-// ==========================================
-// INISIALISASI UTAMA
-// ==========================================
+// ============================================================================
+// BAGIAN 11: INISIALISASI UTAMA SAAT HALAMAN DIMUAT
+// ============================================================================
 window.addEventListener('DOMContentLoaded', () => {
   calculateCanvasDimensions();
   scenes = [{
