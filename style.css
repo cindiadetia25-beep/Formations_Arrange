@@ -3,6 +3,7 @@
   margin: 0;
   padding: 0;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -12,9 +13,9 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  user-select: none;
 }
 
-/* Toolbar Utama */
 .toolbar {
   background-color: #1e293b;
   padding: 8px 12px;
@@ -44,7 +45,6 @@ body {
   align-items: center;
 }
 
-/* Sub Toolbar (Ukuran Lapang & Undo/Redo) */
 .sub-toolbar {
   background-color: #0f172a;
   padding: 6px 12px;
@@ -68,7 +68,7 @@ input[type="text"], select {
   padding: 5px 8px;
   border-radius: 6px;
   font-size: 0.8rem;
-  max-width: 150px;
+  max-width: 140px;
 }
 
 input[type="number"] {
@@ -77,24 +77,27 @@ input[type="number"] {
   color: white;
   padding: 4px 6px;
   border-radius: 5px;
-  width: 48px;
+  width: 46px;
   text-align: center;
   font-size: 0.8rem;
 }
 
 .btn {
-  padding: 6px 11px;
+  padding: 6px 10px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
   font-size: 0.8rem;
   cursor: pointer;
-  transition: 0.15s;
+}
+
+.btn:active {
+  transform: scale(0.96);
 }
 
 .btn.small {
-  padding: 5px 9px;
-  font-size: 0.75rem;
+  padding: 5px 8px;
+  font-size: 0.74rem;
 }
 
 .btn:disabled {
@@ -108,15 +111,16 @@ input[type="number"] {
 .btn.danger { background: #991b1b; color: white; }
 .btn.play { background: #16a34a; color: white; }
 .btn.add { background: #2563eb; color: white; }
+.btn.purple { background: #7c3aed; color: white; }
+.btn.teal { background: #0d9488; color: white; }
 
-/* Workspace Lapangan */
 .workspace {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8px;
+  padding: 6px;
   overflow: hidden;
 }
 
@@ -133,7 +137,6 @@ input[type="number"] {
 #canvas-container {
   background-color: #1b4332;
   border: 2px solid #ffffff;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.6);
   touch-action: none;
 }
 
@@ -142,27 +145,49 @@ input[type="number"] {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
 }
 
-/* Panel Timeline Bawah */
 .timeline-panel {
   background-color: #1e293b;
   border-top: 1px solid #334155;
-  padding: 8px 12px;
+  padding: 8px 10px;
 }
 
 .playback-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .status {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #94a3b8;
   margin-left: auto;
+}
+
+.audio-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #2e1065;
+  border: 1px solid #7c3aed;
+  color: #ddd6fe;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  border-radius: 5px;
+  margin-bottom: 6px;
+}
+
+.btn-remove-audio {
+  background: none;
+  border: none;
+  color: #f87171;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0 4px;
 }
 
 .scene-list {
@@ -177,10 +202,10 @@ input[type="number"] {
   border: 2px solid #334155;
   padding: 6px 12px;
   border-radius: 8px;
-  min-width: 90px;
+  min-width: 85px;
   text-align: center;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: bold;
   white-space: nowrap;
 }
@@ -190,7 +215,6 @@ input[type="number"] {
   background: #281a21;
 }
 
-/* Custom Pop-up Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -205,10 +229,6 @@ input[type="number"] {
   padding: 20px;
 }
 
-.modal-overlay.hidden {
-  display: none;
-}
-
 .modal-box {
   background: #1e293b;
   border: 1px solid #475569;
@@ -216,7 +236,6 @@ input[type="number"] {
   padding: 20px;
   width: 100%;
   max-width: 340px;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
   text-align: center;
 }
 
