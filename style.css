@@ -21,7 +21,7 @@ body {
 }
 
 /* ========================================================================== */
-/* BAGIAN 2: HEADER TOOLBAR & SUB-TOOLBAR                                     */
+/* BAGIAN 2: HEADER TOOLBAR & SUB-TOOLBAR (TAB MODE LKBB / RUKIBRA)           */
 /* ========================================================================== */
 .toolbar {
   background-color: #1e293b;
@@ -54,19 +54,35 @@ body {
 
 .sub-toolbar {
   background-color: #0f172a;
-  padding: 5px 10px;
+  padding: 5px 8px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
+  gap: 4px;
   border-bottom: 1px solid #1e293b;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   flex-shrink: 0;
 }
 
-.field-size-group, .history-group {
+.mode-switch-group, .field-size-group, .history-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
+}
+
+.btn.mode-tab {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  padding: 4px 7px;
+  font-size: 0.68rem;
+}
+
+.btn.mode-tab.active {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #f87171;
 }
 
 /* ========================================================================== */
@@ -78,19 +94,19 @@ input[type="text"], select {
   color: white;
   padding: 4px 7px;
   border-radius: 6px;
-  font-size: 0.76rem;
-  max-width: 110px;
+  font-size: 0.75rem;
+  max-width: 105px;
 }
 
 input[type="number"] {
   background: #1e293b;
   border: 1px solid #475569;
   color: white;
-  padding: 3px 4px;
+  padding: 3px 3px;
   border-radius: 5px;
-  width: 38px;
+  width: 34px;
   text-align: center;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
 }
 
 .btn {
@@ -98,7 +114,7 @@ input[type="number"] {
   border: none;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 0.74rem;
+  font-size: 0.73rem;
   cursor: pointer;
 }
 
@@ -107,8 +123,8 @@ input[type="number"] {
 }
 
 .btn.small {
-  padding: 4px 7px;
-  font-size: 0.7rem;
+  padding: 4px 6px;
+  font-size: 0.68rem;
 }
 
 .btn:disabled {
@@ -145,7 +161,7 @@ input[type="number"] {
 .btn.rose { background: #be123c; color: white; }
 
 /* ========================================================================== */
-/* BAGIAN 4: WORKSPACE LANDSCAPE, KANVAS 2D TERPADU & KONSOL KAMERA 5D        */
+/* BAGIAN 4: WORKSPACE LANDSCAPE, KANVAS 2D/5D & KOTAK SELEKSI BLOK 5D        */
 /* ========================================================================== */
 .workspace {
   flex: 1;
@@ -162,9 +178,9 @@ input[type="number"] {
   background: #334155;
   padding: 3px 12px;
   border-radius: 4px 4px 0 0;
-  font-size: 0.66rem;
+  font-size: 0.65rem;
   font-weight: bold;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   color: #cbd5e1;
 }
 
@@ -188,7 +204,7 @@ input[type="number"] {
 }
 
 .console-tag {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   color: #94a3b8;
   font-weight: bold;
   margin-right: 2px;
@@ -200,7 +216,7 @@ input[type="number"] {
   border: 1px solid #475569;
   border-radius: 4px;
   padding: 2px 5px;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -232,12 +248,20 @@ input[type="number"] {
 }
 
 #canvas-5d-container {
-  background-color: #0f172a;
+  background-color: #0b1324;
   border: 2px solid #ffffff;
   touch-action: none;
   overflow: hidden;
   position: relative;
   z-index: 5;
+}
+
+.selection-box-5d {
+  position: absolute;
+  border: 1.5px dashed #facc15;
+  background: rgba(250, 204, 21, 0.22);
+  pointer-events: none;
+  z-index: 20;
 }
 
 .quick-tools {
@@ -267,7 +291,7 @@ input[type="number"] {
 }
 
 .status {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   color: #94a3b8;
   margin-left: auto;
 }
@@ -306,7 +330,7 @@ input[type="number"] {
   border: 2px solid #334155;
   padding: 5px 10px;
   border-radius: 8px;
-  min-width: 80px;
+  min-width: 82px;
   text-align: center;
   cursor: pointer;
   font-size: 0.72rem;
