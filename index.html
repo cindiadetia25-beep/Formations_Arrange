@@ -6,7 +6,7 @@
   <title>Paskibra Formation Designer</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e293b">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=10">
   <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -47,10 +47,10 @@
     <div class="field-info">
       <span id="fieldLabel">ARAH DEWAN JURI / DP (22m x 15m)</span>
     </div>
-    <div class="danton-zone" title="Kotak Khusus Danton">
-      <span>KOTAK DANTON</span>
+    <div class="field-wrapper">
+      <div id="dantonBox2D" class="danton-zone" title="Kotak Danton">D</div>
+      <div id="canvas-container"></div>
     </div>
-    <div id="canvas-container"></div>
     <div id="canvas-3d-container" class="hidden"></div>
 
     <div class="quick-tools">
@@ -92,7 +92,7 @@
     </div>
   </div>
 
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=10"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
