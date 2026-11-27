@@ -1,4 +1,7 @@
-const CACHE_NAME = 'paskibra-v10';
+// ============================================================================
+// BAGIAN 1: KONFIGURASI NAMA CACHE & DAFTAR FILE OFFLINE
+// ============================================================================
+const CACHE_NAME = 'paskibra-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +10,9 @@ const ASSETS = [
   './manifest.json'
 ];
 
+// ============================================================================
+// BAGIAN 2: INSTALL SERVICE WORKER & SIMPAN ASET AWAL
+// ============================================================================
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
@@ -14,6 +20,9 @@ self.addEventListener('install', (e) => {
   );
 });
 
+// ============================================================================
+// BAGIAN 3: AKTIVASI & PEMBERSIHAN CACHE VERSI LAMA
+// ============================================================================
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -23,6 +32,9 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
+// ============================================================================
+// BAGIAN 4: INTERCEPT REQUEST (NETWORK-FIRST UNTUK SINKRONISASI TERBARU)
+// ============================================================================
 self.addEventListener('fetch', (e) => {
   if (e.request.url.includes('script.google.com')) return;
   e.respondWith(
