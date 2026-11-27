@@ -9,7 +9,7 @@
   <title>Paskibra Formation Designer 5D</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e293b">
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=16">
   <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -31,30 +31,33 @@
   </header>
 
   <!-- ====================================================================== -->
-  <!-- BAGIAN 3: SUB-TOOLBAR (UKURAN LAPANG, BENTUK TITIK, 5D & UNDO/REDO)    -->
+  <!-- BAGIAN 3: SUB-TOOLBAR (MODE LKBB/RUKIBRA, UKURAN LAPANG, 5D & UNDO)    -->
   <!-- ====================================================================== -->
   <section class="sub-toolbar">
+    <div class="mode-switch-group">
+      <button id="btnModeLKBB" class="btn mode-tab active" title="Slide 1: Lomba LKBB dengan Kotak Danton">🎖️ LKBB</button>
+      <button id="btnModeRukibra" class="btn mode-tab" title="Slide 2: RUKIBRA dengan Tiang Bendera">🇮🇩 RUKIBRA</button>
+    </div>
     <div class="field-size-group">
-      <span>Lapang:</span>
       <input type="number" id="fieldLength" value="22" min="5" max="100" title="Panjang (m)">
       <span>x</span>
       <input type="number" id="fieldWidth" value="15" min="5" max="100" title="Lebar (m)">
       <button id="btnApplyField" class="btn secondary small">Set</button>
     </div>
     <div class="history-group">
-      <button id="btnToggleShape" class="btn secondary small" title="Ubah Bentuk Titik">👤 Orang</button>
-      <button id="btnToggle5D" class="btn indigo small" title="Simulasi 5D">✨ 5D</button>
+      <button id="btnToggleShape" class="btn secondary small" title="Ubah Bentuk Titik">👤</button>
+      <button id="btnToggle5D" class="btn indigo small" title="Simulasi 5D Realistis">✨ 5D</button>
       <button id="btnUndo" class="btn secondary small" disabled>↩</button>
       <button id="btnRedo" class="btn secondary small" disabled>↪</button>
     </div>
   </section>
 
   <!-- ====================================================================== -->
-  <!-- BAGIAN 4: AREA KERJA KANVAS LANDSCAPE (2D, KOTAK DANTON, 5D & KONSOLE) -->
+  <!-- BAGIAN 4: AREA KERJA KANVAS LANDSCAPE (2D, KOTAK D/TIANG, 5D & KONSOLE)-->
   <!-- ====================================================================== -->
   <main class="workspace">
     <div class="field-info">
-      <span id="fieldLabel">ARAH DEWAN JURI / DP — KANAN (22m x 15m)</span>
+      <span id="fieldLabel">MODE LKBB (DANTON) — DP KANAN (22m x 15m)</span>
     </div>
 
     <!-- Konsol Kamera & Arah Hadap Pasukan (Muncul Saat Mode 5D Aktif) -->
@@ -64,14 +67,14 @@
         <button class="cam-btn active" data-view="lomba" title="Kamera Tribun Lomba">Lomba</button>
         <button class="cam-btn" data-view="juri" title="Sudut Dewan Juri">DP/Juri</button>
         <button class="cam-btn" data-view="belakang" title="Sudut Belakang">Belakang</button>
-        <button class="cam-btn" data-view="danton" title="Sudut Sisi Danton">Sisi D</button>
+        <button class="cam-btn" data-view="danton" title="Sudut Sisi Danton / Tiang">Depan D/Tiang</button>
         <button class="cam-btn" data-view="atas" title="Tampak Atas">Atas</button>
         <button id="btnCamZoomIn" class="cam-btn" title="Perbesar">+</button>
         <button id="btnCamZoomOut" class="cam-btn" title="Perkecil">−</button>
       </div>
       <div class="console-row">
         <span class="console-tag">Hadap:</span>
-        <button class="face-btn" data-face="danton" title="Hadap ke Danton">Ke D</button>
+        <button class="face-btn" data-face="target" title="Hadap ke Danton / Tiang Bendera">Ke D/Tiang</button>
         <button class="face-btn" data-face="dp" title="Hadap Dewan Juri">Ke DP</button>
         <button class="face-btn" data-face="belakang" title="Hadap Belakang">Blkg</button>
         <button class="face-btn" data-face="kiri" title="Hadap Kiri">Kiri</button>
@@ -80,17 +83,20 @@
       </div>
     </div>
 
-    <!-- Wadah Lapangan 2D Landscape dengan Ruang Kotak Danton Tanpa Terpotong -->
+    <!-- Wadah Lapangan 2D Landscape -->
     <div id="fieldWrapper2D" class="field-wrapper">
       <div id="canvas-container"></div>
     </div>
 
-    <!-- Wadah Simulasi 5D Landscape (Bisa Geser Orang Langsung) -->
-    <div id="canvas-5d-container" class="hidden"></div>
+    <!-- Wadah Simulasi 5D Realistis + Overlay Kotak Blok -->
+    <div id="wrapper5D" class="field-wrapper hidden">
+      <div id="canvas-5d-container"></div>
+      <div id="selectionBox5D" class="selection-box-5d hidden"></div>
+    </div>
 
     <!-- Alat Cepat Pasukan, Blok Seleksi & Kustom Seragam -->
     <div class="quick-tools">
-      <button id="btnSelectBox" class="btn secondary small" title="Seret Kotak untuk Blok Banyak Titik">⬚ Blok</button>
+      <button id="btnSelectBox" class="btn secondary small" title="Seret Kotak untuk Blok Banyak Titik (2D & 5D)">⬚ Blok</button>
       <button id="btnUniformColor" class="btn secondary small" title="Ganti Warna Topi, Baju, Celana & Sepatu">🎨 Seragam</button>
       <button id="btnAddMember" class="btn secondary small">+ Pasukan</button>
       <button id="btnRenameMember" class="btn secondary small" disabled>✎ Nama</button>
@@ -101,15 +107,17 @@
   </main>
 
   <!-- ====================================================================== -->
-  <!-- BAGIAN 5: PANEL TIMELINE HITUNGAN, REKAM SUARA DANTON & EXPORT VIDEO   -->
+  <!-- BAGIAN 5: PANEL TIMELINE HITUNGAN (RENAME/HAPUS), AUDIO & VIDEO HD     -->
   <!-- ====================================================================== -->
   <footer class="timeline-panel">
     <div class="playback-controls">
       <button id="btnPlay" class="btn play small">▶ Play</button>
       <button id="btnAddScene" class="btn add small">+ Hitungan</button>
-      <button id="btnRecordVoice" class="btn rose small" title="Rekam Suara Aba-aba Danton">🎙️ Rekam</button>
+      <button id="btnRenameScene" class="btn secondary small" title="Ubah Nama Hitungan Aktif">✎ Hitungan</button>
+      <button id="btnDeleteScene" class="btn danger small" title="Hapus Hitungan Aktif">🗑️ Hitungan</button>
+      <button id="btnRecordVoice" class="btn rose small" title="Rekam Suara Aba-aba Danton">🎙️ Suara</button>
       <button id="btnAudio" class="btn purple small" title="Pilih File Lagu/Audio">🎵 File</button>
-      <button id="btnExportVideo" class="btn teal small">⬇ Video</button>
+      <button id="btnExportVideo" class="btn teal small" title="Download Video HD 1080p">⬇ Video HD</button>
       <input type="file" id="audioInput" accept="audio/*" class="hidden">
       <span id="statusText" class="status">Siap</span>
     </div>
@@ -127,7 +135,7 @@
     <div class="modal-box">
       <h3 id="modalTitle">Informasi</h3>
       <p id="modalMessage">Pesan notifikasi</p>
-      <input type="text" id="modalInput" class="modal-input hidden" placeholder="Ketik nama..." maxlength="12" />
+      <input type="text" id="modalInput" class="modal-input hidden" placeholder="Ketik nama..." maxlength="18" />
       <div class="modal-buttons">
         <button id="modalCancel" class="btn secondary hidden">Batal</button>
         <button id="modalConfirm" class="btn primary">OK</button>
@@ -168,7 +176,7 @@
   <!-- ====================================================================== -->
   <!-- BAGIAN 7: SCRIPT UTAMA & REGISTRASI SERVICE WORKER                     -->
   <!-- ====================================================================== -->
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
