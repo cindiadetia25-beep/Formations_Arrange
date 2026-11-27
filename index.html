@@ -9,7 +9,7 @@
   <title>Paskibra Formation Designer</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e293b">
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
   <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -50,35 +50,48 @@
   </section>
 
   <!-- ====================================================================== -->
-  <!-- BAGIAN 4: AREA KERJA KANVAS LAPANGAN (2D, KOTAK DANTON, 3D & KONSOLE)  -->
+  <!-- BAGIAN 4: AREA KERJA KANVAS LANDSCAPE (2D, KOTAK DANTON, 3D & KONSOLE) -->
   <!-- ====================================================================== -->
   <main class="workspace">
     <div class="field-info">
-      <span id="fieldLabel">ARAH DEWAN JURI / DP (22m x 15m)</span>
+      <span id="fieldLabel">ARAH DEWAN JURI / DP — KANAN (22m x 15m)</span>
     </div>
 
-    <!-- Konsol Sudut Pandang Kamera (Muncul Saat Mode 3D Aktif) -->
+    <!-- Konsol Kamera & Arah Hadap Pasukan (Muncul Saat Mode 3D Aktif) -->
     <div id="cameraConsole3D" class="camera-console hidden">
-      <button class="cam-btn" data-view="juri" title="Sudut Dewan Juri">DP/Juri</button>
-      <button class="cam-btn" data-view="belakang" title="Sudut Belakang">Belakang</button>
-      <button class="cam-btn" data-view="kiri" title="Sudut Sisi Danton">Sisi D</button>
-      <button class="cam-btn" data-view="kanan" title="Sudut Sisi Kanan">Kanan</button>
-      <button class="cam-btn" data-view="atas" title="Tampak Atas">Atas</button>
-      <button id="btnCamZoomIn" class="cam-btn" title="Perbesar">+</button>
-      <button id="btnCamZoomOut" class="cam-btn" title="Perkecil">−</button>
+      <div class="console-row">
+        <span class="console-tag">Kamera:</span>
+        <button class="cam-btn active" data-view="lomba" title="Kamera Tribun Lomba">Lomba</button>
+        <button class="cam-btn" data-view="juri" title="Sudut Dewan Juri">DP/Juri</button>
+        <button class="cam-btn" data-view="belakang" title="Sudut Belakang">Belakang</button>
+        <button class="cam-btn" data-view="danton" title="Sudut Sisi Danton">Sisi D</button>
+        <button class="cam-btn" data-view="atas" title="Tampak Atas">Atas</button>
+        <button id="btnCamZoomIn" class="cam-btn" title="Perbesar">+</button>
+        <button id="btnCamZoomOut" class="cam-btn" title="Perkecil">−</button>
+      </div>
+      <div class="console-row">
+        <span class="console-tag">Hadap Titik:</span>
+        <button class="face-btn" data-face="danton" title="Hadap ke Danton">Ke D</button>
+        <button class="face-btn" data-face="dp" title="Hadap Dewan Juri">Ke DP</button>
+        <button class="face-btn" data-face="belakang" title="Hadap Belakang">Blkg</button>
+        <button class="face-btn" data-face="kiri" title="Hadap Kiri">Kiri</button>
+        <button class="face-btn" data-face="kanan" title="Hadap Kanan">Kanan</button>
+        <button id="btnFaceRotate" class="face-btn" title="Putar 45 Derajat">↻ 45°</button>
+      </div>
     </div>
 
-    <!-- Wadah Lapangan 2D dengan Kotak Danton Utuh di Luar Garis Kiri -->
+    <!-- Wadah Lapangan 2D Landscape dengan Kotak Danton Utuh di Bawah Tengah -->
     <div id="fieldWrapper2D" class="field-wrapper">
-      <div id="dantonBox2D" class="danton-zone" title="Kotak Khusus Danton">D</div>
       <div id="canvas-container"></div>
+      <div id="dantonBox2D" class="danton-zone" title="Kotak Khusus Danton">D</div>
     </div>
 
-    <!-- Wadah Simulasi 3D -->
+    <!-- Wadah Simulasi 3D Landscape -->
     <div id="canvas-3d-container" class="hidden"></div>
 
-    <!-- Alat Cepat Pasukan -->
+    <!-- Alat Cepat Pasukan & Mode Blok Seleksi -->
     <div class="quick-tools">
+      <button id="btnSelectBox" class="btn secondary small" title="Seret Kotak untuk Blok Banyak Titik">⬚ Blok</button>
       <button id="btnAddMember" class="btn secondary small">+ Pasukan</button>
       <button id="btnRenameMember" class="btn secondary small" disabled>✎ Nama</button>
       <button id="btnDeleteSelected" class="btn warning small" disabled>Hapus</button>
@@ -124,7 +137,7 @@
   <!-- ====================================================================== -->
   <!-- BAGIAN 7: SCRIPT UTAMA & REGISTRASI SERVICE WORKER                     -->
   <!-- ====================================================================== -->
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
