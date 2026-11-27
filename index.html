@@ -6,7 +6,7 @@
   <title>Paskibra Formation Designer</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e293b">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
   <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
 </head>
 <body>
@@ -52,17 +52,24 @@
     </div>
   </main>
 
-  <!-- Panel Timeline & Animasi -->
+  <!-- Panel Timeline, Audio & Export Video -->
   <footer class="timeline-panel">
     <div class="playback-controls">
-      <button id="btnPlay" class="btn play">▶ Play</button>
-      <button id="btnAddScene" class="btn add">+ Hitungan</button>
+      <button id="btnPlay" class="btn play small">▶ Play</button>
+      <button id="btnAddScene" class="btn add small">+ Hitungan</button>
+      <button id="btnAudio" class="btn purple small">🎵 Audio</button>
+      <button id="btnExportVideo" class="btn teal small">⬇ Video</button>
+      <input type="file" id="audioInput" accept="audio/*" class="hidden">
       <span id="statusText" class="status">Siap</span>
+    </div>
+    <div id="audioBadge" class="audio-badge hidden">
+      <span id="audioFileName">Lagu terpilih</span>
+      <button id="btnRemoveAudio" class="btn-remove-audio">✕</button>
     </div>
     <div id="sceneList" class="scene-list"></div>
   </footer>
 
-  <!-- Custom Pop-up Modal (Pengganti Pop-up Bawaan Web) -->
+  <!-- Custom Pop-up Modal -->
   <div id="customModal" class="modal-overlay hidden">
     <div class="modal-box">
       <h3 id="modalTitle">Informasi</h3>
@@ -74,7 +81,7 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
