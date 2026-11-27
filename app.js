@@ -3,11 +3,13 @@
 // ==========================================
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypOugpXmLsnd_Q4dYber4O6V_xDt4JrDeCaiA-RgrirMCDtHpaJNxewlAfiMA6MhACiA/exec";
 
-Konva.pixelRatio = 1.25;
+if (typeof Konva !== 'undefined') {
+  Konva.pixelRatio = 1.25;
+}
 
 let fieldMetersL = 22;
 let fieldMetersW = 15;
-let canvasW = 300;
+let canvasW = 280;
 let canvasH = 340;
 
 let scenes = [];
@@ -17,8 +19,7 @@ let selectedMemberId = null;
 let savedFormations = [];
 let isPlaying = false;
 
-// Opsi Tampilan: 'circle' | 'person' dan Mode 2D/3D
-let pointShape = 'circle';
+let pointShape = 'circle'; // 'circle' | 'person'
 let is3DMode = false;
 
 let undoStack = [];
@@ -31,10 +32,11 @@ let audioSourceNode = null;
 let audioDestNode = null;
 
 // Three.js 3D State
-let threeScene, threeCamera, threeRenderer;
+let threeScene = null;
+let threeCamera = null;
+let threeRenderer = null;
 let threeMembers = {};
 let threeAnimId = null;
-let is3DMarching = false;
 
 // Inisialisasi Konva 2D
 const stage = new Konva.Stage({
@@ -56,12 +58,14 @@ stage.add(troopLayer);
 function showPopup(title, message, options = {}) {
   return new Promise((resolve) => {
     const overlay = document.getElementById('customModal');
-    document.getElementById('modalTitle').innerText = title;
-    document.getElementById('modalMessage').innerText = message;
+    const titleEl = document.getElementById('modalTitle');
+    const msgEl = document.getElementById('modalMessage');
     const btnOk = document.getElementById('modalConfirm');
     const btnCancel = document.getElementById('modalCancel');
     const inputEl = document.getElementById('modalInput');
 
+    titleEl.innerText = title;
+    msgEl.innerText = message;
     overlay.classList.remove('hidden');
     btnCancel.classList.toggle('hidden', !options.isConfirm && !options.isPrompt);
 
@@ -100,8 +104,10 @@ function saveHistoryState() {
 }
 
 function updateHistoryButtons() {
-  document.getElementById('btnUndo').disabled = undoStack.length === 0;
-  document.getElementById('btnRedo').disabled = redoStack.length === 0;
+  const btnU = document.getElementById('btnUndo');
+  const btnR = document.getElementById('btnRedo');
+  if (btnU) btnU.disabled = undoStack.length === 0;
+  if (btnR) btnR.disabled = redoStack.length === 0;
 }
 
 document.getElementById('btnUndo').addEventListener('click', () => {
@@ -130,14 +136,15 @@ document.getElementById('btnRedo').addEventListener('click', () => {
 // UKURAN LAPANG & RADIUS TITIK PROPORSIONAL
 // ==========================================
 function getMemberRadius() {
-  // Lebar bahu manusia ~0.45m; proporsional terhadap 1 kotak meter lapangan
   const meterPx = Math.min(canvasW / fieldMetersW, canvasH / fieldMetersL);
-  return Math.max(6, Math.min(13, Math.round(meterPx * 0.42)));
+  return Math.max(5, Math.min(11, Math.round(meterPx * 0.38)));
 }
 
 function calculateCanvasDimensions() {
-  const maxW = Math.min(window.innerWidth - 28, 520);
-  const maxH = Math.min(window.innerHeight - 335, 380);
+  const winW = window.innerWidth || 360;
+  const winH = window.innerHeight || 640;
+  const maxW = Math.max(200, Math.min(winW - 28, 520));
+  const maxH = Math.max(220, Math.min(winH - 335, 380));
   const ratio = fieldMetersW / fieldMetersL;
 
   if (maxW / maxH > ratio) {
@@ -231,14 +238,14 @@ document.getElementById('btnToggleShape').addEventListener('click', () => {
 });
 
 // ==========================================
-// MANAJEMEN PASUKAN 2D (LINGKARAN & BENTUK ORANG)
+// MANAJEMEN PASUKAN 2D
 // ==========================================
 function createDefaultFormation() {
   const members = [];
   const stepX = canvasW / fieldMetersW;
   const stepY = canvasH / fieldMetersL;
-  const gapX = Math.max(18, stepX * 1.1);
-  const gapY = Math.max(18, stepY * 1.1);
+  const gapX = Math.max(15, stepX * 1.1);
+  const gapY = Math.max(15, stepY * 1.1);
   const startX = canvasW / 2 - gapX;
   const startY = canvasH / 2 - (gapY * 2);
 
@@ -246,7 +253,7 @@ function createDefaultFormation() {
     id: 'D',
     label: 'D',
     color: '#ef4444',
-    x: Math.round(Math.max(16, startX - gapX * 1.3)),
+    x: Math.round(Math.max(14, startX - gapX * 1.3)),
     y: Math.round(startY + (2 * gapY))
   });
 
@@ -305,7 +312,6 @@ function buildMemberNode(m, r) {
   });
 
   if (pointShape === 'person') {
-    // Bentuk Orang (Tampak Atas: Bahu Oval + Kepala + Label Nama di bawah)
     const shoulders = new Konva.Ellipse({
       name: 'mainBody',
       radiusX: r * 1.25,
@@ -344,7 +350,6 @@ function buildMemberNode(m, r) {
     group.add(head);
     group.add(text);
   } else {
-    // Bentuk Lingkaran Proporsional
     const circle = new Konva.Circle({
       name: 'mainBody',
       radius: r,
@@ -424,7 +429,7 @@ function renderScene(sceneIndex, animate = true) {
     }
   });
 
-  troopLayer.batchDraw();
+  troopLayer.draw();
   renderTimelineUI();
 
   if (is3DMode) {
@@ -432,7 +437,6 @@ function renderScene(sceneIndex, animate = true) {
   }
 }
 
-// Tambah 1 Pasukan
 document.getElementById('btnAddMember').addEventListener('click', () => {
   saveHistoryState();
   const nextNum = scenes[currentSceneIdx].members.length + 1;
@@ -449,7 +453,6 @@ document.getElementById('btnAddMember').addEventListener('click', () => {
   setStatus(`+ Titik ${nextNum}`);
 });
 
-// Beri Nama pada Titik yang Dipilih
 document.getElementById('btnRenameMember').addEventListener('click', async () => {
   if (!selectedMemberId) return;
   const currentMember = scenes[currentSceneIdx].members.find(m => m.id === selectedMemberId);
@@ -473,7 +476,6 @@ document.getElementById('btnRenameMember').addEventListener('click', async () =>
   setStatus(`Nama diubah: ${newName}`);
 });
 
-// Hapus Titik
 document.getElementById('btnDeleteSelected').addEventListener('click', async () => {
   if (!selectedMemberId) return;
   const ok = await showPopup("Hapus Titik", "Hapus titik yang dipilih dari semua hitungan?", { isConfirm: true });
@@ -489,7 +491,6 @@ document.getElementById('btnDeleteSelected').addEventListener('click', async () 
   setStatus("Titik dihapus");
 });
 
-// Kosongkan Lapangan
 document.getElementById('btnClearAll').addEventListener('click', async () => {
   const ok = await showPopup("Hapus Semua", "Kosongkan seluruh titik pasukan di lapangan?", { isConfirm: true });
   if (!ok) return;
@@ -502,7 +503,6 @@ document.getElementById('btnClearAll').addEventListener('click', async () => {
   setStatus("Lapang kosong");
 });
 
-// Reset Formasi Standar
 document.getElementById('btnResetPos').addEventListener('click', async () => {
   const ok = await showPopup("Reset Formasi", "Kembalikan ke formasi awal (15 pasukan + Danton)?", { isConfirm: true });
   if (!ok) return;
@@ -519,6 +519,11 @@ document.getElementById('btnResetPos').addEventListener('click', async () => {
 // MODE SIMULASI 3D (GERAKAN MANUSIA VARIASI)
 // ==========================================
 document.getElementById('btnToggle3D').addEventListener('click', () => {
+  if (typeof THREE === 'undefined') {
+    showPopup("Info 3D", "Library 3D belum siap. Pastikan koneksi internet aktif saat pertama membuka aplikasi.");
+    return;
+  }
+
   is3DMode = !is3DMode;
   const c2d = document.getElementById('canvas-container');
   const c3d = document.getElementById('canvas-3d-container');
@@ -549,12 +554,11 @@ function init3DScene() {
     threeScene.background = new THREE.Color(0x0f172a);
 
     threeCamera = new THREE.PerspectiveCamera(42, canvasW / canvasH, 0.1, 200);
-    // Sudut pandang tribun Dewan Juri menghadap lapangan
     threeCamera.position.set(0, fieldMetersL * 0.95, fieldMetersL * 0.95);
     threeCamera.lookAt(0, 0, 0);
 
     threeRenderer = new THREE.WebGLRenderer({ antialias: true });
-    threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     threeRenderer.setSize(canvasW, canvasH);
     container.innerHTML = '';
     container.appendChild(threeRenderer.domElement);
@@ -587,10 +591,9 @@ function resize3DView() {
 function create3DHumanFigure(member) {
   const group = new THREE.Group();
   const isDanton = member.id === 'D';
-  const uniformColor = isDanton ? 0xdc2626 : 0xf8fafc; // Danton merah, Pasukan putih PDU
+  const uniformColor = isDanton ? 0xdc2626 : 0xf8fafc;
   const pantsColor = isDanton ? 0x991b1b : 0x1e3a8a;
 
-  // Badan (Torso)
   const torso = new THREE.Mesh(
     new THREE.BoxGeometry(0.36, 0.55, 0.2),
     new THREE.MeshLambertMaterial({ color: uniformColor })
@@ -598,7 +601,6 @@ function create3DHumanFigure(member) {
   torso.position.y = 0.85;
   group.add(torso);
 
-  // Kepala & Peci/Baret
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.14, 10, 10),
     new THREE.MeshLambertMaterial({ color: 0xfcd34d })
@@ -613,7 +615,6 @@ function create3DHumanFigure(member) {
   cap.position.y = 1.38;
   group.add(cap);
 
-  // Kaki Kiri & Kanan (Untuk Animasi Langkah Tegap / Jalan)
   const legGeo = new THREE.BoxGeometry(0.13, 0.58, 0.14);
   const legMat = new THREE.MeshLambertMaterial({ color: pantsColor });
 
@@ -625,7 +626,6 @@ function create3DHumanFigure(member) {
   rightLeg.position.set(0.1, 0.29, 0);
   group.add(rightLeg);
 
-  // Lengan Kiri & Kanan (Untuk Animasi Melenggang)
   const armGeo = new THREE.BoxGeometry(0.1, 0.5, 0.11);
   const armMat = new THREE.MeshLambertMaterial({ color: uniformColor });
 
@@ -649,7 +649,6 @@ function map2DTo3D(x2d, y2d) {
 
 function rebuild3DFieldAndTroops() {
   if (!threeScene) return;
-  // Hapus objek lama kecuali lampu
   for (let i = threeScene.children.length - 1; i >= 0; i--) {
     if (!(threeScene.children[i] instanceof THREE.Light)) {
       threeScene.remove(threeScene.children[i]);
@@ -657,7 +656,6 @@ function rebuild3DFieldAndTroops() {
   }
   threeMembers = {};
 
-  // Lantai Lapangan Hijau 3D
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(fieldMetersW, fieldMetersL),
     new THREE.MeshLambertMaterial({ color: 0x1b4332 })
@@ -665,13 +663,12 @@ function rebuild3DFieldAndTroops() {
   plane.rotation.x = -Math.PI / 2;
   threeScene.add(plane);
 
-  // Garis Grid 3D
-  const gridHelper = new THREE.GridHelper(Math.max(fieldMetersW, fieldMetersL), Math.max(fieldMetersW, fieldMetersL), 0xffffff, 0x2d6a4f);
-  gridHelper.scale.set(fieldMetersW / Math.max(fieldMetersW, fieldMetersL), 1, fieldMetersL / Math.max(fieldMetersW, fieldMetersL));
+  const maxDim = Math.max(fieldMetersW, fieldMetersL);
+  const gridHelper = new THREE.GridHelper(maxDim, maxDim, 0xffffff, 0x2d6a4f);
+  gridHelper.scale.set(fieldMetersW / maxDim, 1, fieldMetersL / maxDim);
   gridHelper.position.y = 0.01;
   threeScene.add(gridHelper);
 
-  // Pasukan 3D
   const sceneData = scenes[currentSceneIdx];
   if (!sceneData) return;
 
@@ -707,7 +704,7 @@ function start3DLoop() {
 
   const animate = () => {
     threeAnimId = requestAnimationFrame(animate);
-    const t = clock.getElapsedTime() * 10; // Tempo langkah Paskibra
+    const t = clock.getElapsedTime() * 10;
 
     Object.values(threeMembers).forEach(fig => {
       const target = fig.userData.targetPos;
@@ -716,22 +713,19 @@ function start3DLoop() {
       const dist = Math.hypot(dx, dz);
 
       if (dist > 0.03) {
-        // Bergerak menuju titik berikutnya + menghadap arah jalan
         fig.position.x += dx * 0.08;
         fig.position.z += dz * 0.08;
         fig.rotation.y = Math.atan2(dx, dz);
 
-        // Animasi ayunan langkah tegap kaki & lengan
         const swing = Math.sin(t) * 0.65;
         fig.userData.leftLeg.rotation.x = swing;
         fig.userData.rightLeg.rotation.x = -swing;
         fig.userData.leftArm.rotation.x = -swing * 0.85;
         fig.userData.rightArm.rotation.x = swing * 0.85;
       } else {
-        // Sikap sempurna (berhenti tegak menghadap Dewan Juri)
         fig.position.x = target.x;
         fig.position.z = target.z;
-        fig.rotation.y = Math.PI; // Menghadap ke arah depan (Dewan Juri)
+        fig.rotation.y = Math.PI;
         fig.userData.leftLeg.rotation.x = 0;
         fig.userData.rightLeg.rotation.x = 0;
         fig.userData.leftArm.rotation.x = 0;
@@ -912,7 +906,7 @@ document.getElementById('btnExportVideo').addEventListener('click', async () => 
 
   let mimeType = 'video/mp4';
   let ext = 'mp4';
-  if (!MediaRecorder.isTypeSupported('video/mp4')) {
+  if (typeof MediaRecorder !== 'undefined' && !MediaRecorder.isTypeSupported('video/mp4')) {
     mimeType = 'video/webm';
     ext = 'webm';
   }
@@ -948,7 +942,8 @@ document.getElementById('btnExportVideo').addEventListener('click', async () => 
 // DATABASE GOOGLE APPS SCRIPT
 // ==========================================
 function setStatus(msg) {
-  document.getElementById('statusText').innerText = msg;
+  const el = document.getElementById('statusText');
+  if (el) el.innerText = msg;
 }
 
 document.getElementById('btnSave').addEventListener('click', async () => {
@@ -979,7 +974,7 @@ document.getElementById('btnSave').addEventListener('click', async () => {
 });
 
 async function loadSavedFormations() {
-  if (APPS_SCRIPT_URL.includes("TEMPEL_URL")) return;
+  if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL.includes("TEMPEL_URL")) return;
   try {
     const res = await fetch(APPS_SCRIPT_URL);
     const json = await res.json();
@@ -1011,12 +1006,14 @@ document.getElementById('savedList').addEventListener('change', (e) => {
 });
 
 // ==========================================
-// INISIALISASI
+// INISIALISASI UTAMA (AMAN & PASTI TAMPIL)
 // ==========================================
-calculateCanvasDimensions();
-scenes.push({
-  name: "Hitungan 1",
-  members: createDefaultFormation()
+window.addEventListener('DOMContentLoaded', () => {
+  calculateCanvasDimensions();
+  scenes = [{
+    name: "Hitungan 1",
+    members: createDefaultFormation()
+  }];
+  renderScene(0, false);
+  loadSavedFormations();
 });
-renderScene(0, false);
-loadSavedFormations();
