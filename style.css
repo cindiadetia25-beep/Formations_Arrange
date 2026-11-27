@@ -11,7 +11,7 @@ body {
   color: #f1f5f9;
   display: flex;
   flex-direction: column;
-  height: 100dvh; /* Menyesuaikan tinggi layar dinamis HP (termasuk bilah browser) */
+  height: 100dvh;
   min-height: -webkit-fill-available;
   overflow: hidden;
   user-select: none;
@@ -19,18 +19,19 @@ body {
 
 .toolbar {
   background-color: #1e293b;
-  padding: 8px 12px;
+  padding: 7px 10px;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 1px solid #334155;
+  flex-shrink: 0;
 }
 
 .brand {
   font-weight: 800;
-  font-size: 1rem;
+  font-size: 0.95rem;
   letter-spacing: 1px;
 }
 
@@ -41,54 +42,54 @@ body {
 
 .actions {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 5px;
   align-items: center;
 }
 
 .sub-toolbar {
   background-color: #0f172a;
-  padding: 6px 12px;
+  padding: 5px 10px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #1e293b;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  flex-shrink: 0;
 }
 
 .field-size-group, .history-group {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 input[type="text"], select {
   background: #0f172a;
   border: 1px solid #475569;
   color: white;
-  padding: 5px 8px;
+  padding: 5px 7px;
   border-radius: 6px;
-  font-size: 0.8rem;
-  max-width: 140px;
+  font-size: 0.78rem;
+  max-width: 115px;
 }
 
 input[type="number"] {
   background: #1e293b;
   border: 1px solid #475569;
   color: white;
-  padding: 4px 6px;
+  padding: 3px 4px;
   border-radius: 5px;
-  width: 46px;
+  width: 40px;
   text-align: center;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
 }
 
 .btn {
-  padding: 6px 10px;
+  padding: 5px 9px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   cursor: pointer;
 }
 
@@ -97,8 +98,8 @@ input[type="number"] {
 }
 
 .btn.small {
-  padding: 5px 8px;
-  font-size: 0.74rem;
+  padding: 4px 7px;
+  font-size: 0.72rem;
 }
 
 .btn:disabled {
@@ -114,6 +115,7 @@ input[type="number"] {
 .btn.add { background: #2563eb; color: white; }
 .btn.purple { background: #7c3aed; color: white; }
 .btn.teal { background: #0d9488; color: white; }
+.btn.indigo { background: #4f46e5; color: white; }
 
 .workspace {
   flex: 1;
@@ -123,26 +125,28 @@ input[type="number"] {
   justify-content: center;
   padding: 6px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .field-info {
   background: #334155;
-  padding: 3px 14px;
+  padding: 3px 12px;
   border-radius: 4px 4px 0 0;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: bold;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   color: #cbd5e1;
 }
 
-#canvas-container {
+#canvas-container, #canvas-3d-container {
   background-color: #1b4332;
   border: 2px solid #ffffff;
   touch-action: none;
+  overflow: hidden;
 }
 
 .quick-tools {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -152,20 +156,20 @@ input[type="number"] {
 .timeline-panel {
   background-color: #1e293b;
   border-top: 1px solid #334155;
-  padding: 8px 10px 14px 10px; /* Tambah ruang bawah agar tidak mepet navigasi HP */
-  flex-shrink: 0; /* Mencegah panel bawah tergencet/terpotong */
+  padding: 7px 10px 12px 10px;
+  flex-shrink: 0;
 }
 
 .playback-controls {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 5px;
   margin-bottom: 6px;
 }
 
 .status {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: #94a3b8;
   margin-left: auto;
 }
@@ -177,10 +181,10 @@ input[type="number"] {
   background: #2e1065;
   border: 1px solid #7c3aed;
   color: #ddd6fe;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   padding: 3px 8px;
   border-radius: 5px;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .btn-remove-audio {
@@ -196,18 +200,18 @@ input[type="number"] {
   display: flex;
   gap: 6px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .scene-card {
   background: #0f172a;
   border: 2px solid #334155;
-  padding: 6px 12px;
+  padding: 5px 11px;
   border-radius: 8px;
-  min-width: 85px;
+  min-width: 82px;
   text-align: center;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: bold;
   white-space: nowrap;
 }
@@ -217,13 +221,14 @@ input[type="number"] {
   background: #281a21;
 }
 
+/* Custom Pop-up Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.78);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -235,23 +240,32 @@ input[type="number"] {
   background: #1e293b;
   border: 1px solid #475569;
   border-radius: 12px;
-  padding: 20px;
+  padding: 18px;
   width: 100%;
-  max-width: 340px;
+  max-width: 320px;
   text-align: center;
 }
 
 .modal-box h3 {
-  font-size: 1.05rem;
+  font-size: 1rem;
   margin-bottom: 8px;
   color: #f8fafc;
 }
 
 .modal-box p {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   color: #cbd5e1;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
   line-height: 1.4;
+}
+
+.modal-input {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-bottom: 14px;
+  padding: 8px 10px !important;
+  font-size: 0.9rem !important;
+  text-align: center;
 }
 
 .modal-buttons {
@@ -262,7 +276,7 @@ input[type="number"] {
 
 .modal-buttons .btn {
   min-width: 85px;
-  padding: 8px 14px;
+  padding: 7px 14px;
 }
 
 .hidden {
