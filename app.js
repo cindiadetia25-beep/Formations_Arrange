@@ -143,8 +143,8 @@ function getMemberRadius() {
 function calculateCanvasDimensions() {
   const winW = window.innerWidth || 360;
   const winH = window.innerHeight || 640;
-  const maxW = Math.max(200, Math.min(winW - 28, 520));
-  const maxH = Math.max(220, Math.min(winH - 335, 380));
+  const maxW = Math.max(200, Math.min(winW - 58, 500));
+  const maxH = Math.max(210, Math.min(winH - 335, 380));
   const ratio = fieldMetersW / fieldMetersL;
 
   if (maxW / maxH > ratio) {
@@ -247,14 +247,16 @@ function createDefaultFormation() {
   const gapX = Math.max(15, stepX * 1.1);
   const gapY = Math.max(15, stepY * 1.1);
   const startX = canvasW / 2 - gapX;
-  const startY = canvasH / 2 - (gapY * 2);
+  const centerY = Math.round(canvasH / 2);
+  const startY = centerY - (gapY * 2);
 
+  // Titik Danton berada di tengah-tengah tinggi lapangan (sejajar depan Kotak Danton di tepi kiri)
   members.push({
     id: 'D',
     label: 'D',
     color: '#ef4444',
-    x: Math.round(Math.max(14, startX - gapX * 1.3)),
-    y: Math.round(startY + (2 * gapY))
+    x: Math.round(Math.max(16, startX - gapX * 1.25)),
+    y: centerY
   });
 
   let num = 1;
@@ -663,6 +665,23 @@ function rebuild3DFieldAndTroops() {
   plane.rotation.x = -Math.PI / 2;
   threeScene.add(plane);
 
+  // Kotak Khusus Danton menyambung di luar garis kiri tengah lapangan (z = 0)
+  const dantonBox = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.4, 1.6),
+    new THREE.MeshLambertMaterial({ color: 0x1b4332 })
+  );
+  dantonBox.rotation.x = -Math.PI / 2;
+  dantonBox.position.set(-(fieldMetersW / 2) - 0.7, 0.01, 0);
+  threeScene.add(dantonBox);
+
+  const dantonEdges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.4, 1.6)),
+    new THREE.LineBasicMaterial({ color: 0xffffff })
+  );
+  dantonEdges.rotation.x = -Math.PI / 2;
+  dantonEdges.position.set(-(fieldMetersW / 2) - 0.7, 0.02, 0);
+  threeScene.add(dantonEdges);
+
   const maxDim = Math.max(fieldMetersW, fieldMetersL);
   const gridHelper = new THREE.GridHelper(maxDim, maxDim, 0xffffff, 0x2d6a4f);
   gridHelper.scale.set(fieldMetersW / maxDim, 1, fieldMetersL / maxDim);
@@ -1005,8 +1024,41 @@ document.getElementById('savedList').addEventListener('change', (e) => {
   setStatus(`Dimuat: ${selected.nama}`);
 });
 
+document.getElementById('btnDeleteProject').addEventListener('click', async () => {
+  const select = document.getElementById('savedList');
+  const idx = select.value;
+  if (idx === "") {
+    showPopup("Pilih Project", "Pilih formasi yang ingin dihapus dari daftar Muat terlebih dahulu.");
+    return;
+  }
+
+  const targetProject = savedFormations[idx];
+  const ok = await showPopup("Hapus Project", `Hapus permanen formasi "${targetProject.nama}" dari cloud?`, { isConfirm: true });
+  if (!ok) return;
+
+  setStatus("Menghapus...");
+  try {
+    const response = await fetch(APPS_SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "delete", nama: targetProject.nama })
+    });
+    const result = await response.json();
+    if (result.status === "success") {
+      document.getElementById('formationName').value = "";
+      setStatus("Project dihapus");
+      showPopup("Terhapus", result.message);
+      loadSavedFormations();
+    } else {
+      showPopup("Gagal", result.message);
+    }
+  } catch (err) {
+    setStatus("Gagal");
+    showPopup("Koneksi Gagal", "Tidak dapat terhubung ke Google Sheets untuk menghapus project.");
+  }
+});
+
 // ==========================================
-// INISIALISASI UTAMA (AMAN & PASTI TAMPIL)
+// INISIALISASI UTAMA
 // ==========================================
 window.addEventListener('DOMContentLoaded', () => {
   calculateCanvasDimensions();
