@@ -1,3 +1,6 @@
+/* ========================================================================== */
+/* BAGIAN 1: RESET DASAR & TATA LETAK BODY (100DVH MOBILE-FRIENDLY)           */
+/* ========================================================================== */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -17,6 +20,9 @@ body {
   user-select: none;
 }
 
+/* ========================================================================== */
+/* BAGIAN 2: HEADER TOOLBAR & SUB-TOOLBAR                                     */
+/* ========================================================================== */
 .toolbar {
   background-color: #1e293b;
   padding: 7px 10px;
@@ -63,6 +69,9 @@ body {
   gap: 4px;
 }
 
+/* ========================================================================== */
+/* BAGIAN 3: INPUT & GAYA TOMBOL                                              */
+/* ========================================================================== */
 input[type="text"], select {
   background: #0f172a;
   border: 1px solid #475569;
@@ -117,6 +126,9 @@ input[type="number"] {
 .btn.teal { background: #0d9488; color: white; }
 .btn.indigo { background: #4f46e5; color: white; }
 
+/* ========================================================================== */
+/* BAGIAN 4: WORKSPACE LAPANGAN, KOTAK DANTON & KANVAS 2D/3D                  */
+/* ========================================================================== */
 .workspace {
   flex: 1;
   display: flex;
@@ -153,7 +165,9 @@ input[type="number"] {
   width: 28px;
   height: 34px;
   background-color: #1b4332;
-  border: 2px solid #ffffff;
+  border-top: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
   border-right: none;
   display: flex;
   align-items: center;
@@ -161,7 +175,8 @@ input[type="number"] {
   font-size: 0.65rem;
   font-weight: bold;
   color: #fca5a5;
-  z-index: 5;
+  z-index: 10;
+  pointer-events: none;
 }
 
 #canvas-container, #canvas-3d-container {
@@ -179,6 +194,9 @@ input[type="number"] {
   gap: 5px;
 }
 
+/* ========================================================================== */
+/* BAGIAN 5: PANEL TIMELINE HITUNGAN & BADGE AUDIO                            */
+/* ========================================================================== */
 .timeline-panel {
   background-color: #1e293b;
   border-top: 1px solid #334155;
@@ -247,7 +265,9 @@ input[type="number"] {
   background: #281a21;
 }
 
-/* Custom Pop-up Modal */
+/* ========================================================================== */
+/* BAGIAN 6: CUSTOM POP-UP MODAL & KELAS UTILITAS                             */
+/* ========================================================================== */
 .modal-overlay {
   position: fixed;
   top: 0;
