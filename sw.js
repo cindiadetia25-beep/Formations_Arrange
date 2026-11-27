@@ -1,4 +1,4 @@
-const CACHE_NAME = 'paskibra-v4';
+const CACHE_NAME = 'paskibra-v5';
 const ASSETS = [
   './',
   './index.html',
