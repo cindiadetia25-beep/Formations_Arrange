@@ -122,6 +122,17 @@ input[type="number"] {
   font-weight: 800;
 }
 
+.btn.recording {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  animation: pulseRec 1s infinite;
+}
+
+@keyframes pulseRec {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
 .btn.primary { background: #dc2626; color: white; }
 .btn.secondary { background: #334155; color: #e2e8f0; }
 .btn.warning { background: #d97706; color: white; }
@@ -131,9 +142,10 @@ input[type="number"] {
 .btn.purple { background: #7c3aed; color: white; }
 .btn.teal { background: #0d9488; color: white; }
 .btn.indigo { background: #4f46e5; color: white; }
+.btn.rose { background: #be123c; color: white; }
 
 /* ========================================================================== */
-/* BAGIAN 4: WORKSPACE LANDSCAPE, KOTAK DANTON UTUH & KONSOL KAMERA 3D        */
+/* BAGIAN 4: WORKSPACE LANDSCAPE, KANVAS 2D TERPADU & KONSOL KAMERA 5D        */
 /* ========================================================================== */
 .workspace {
   flex: 1;
@@ -208,34 +220,19 @@ input[type="number"] {
 .field-wrapper {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  margin-bottom: 18px;
 }
 
-/* Kotak Danton Utuh (4 Garis Penuh) Menempel Rapat di Luar Garis Bawah Lapang Landscape */
-.danton-zone {
-  position: absolute;
-  bottom: -24px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 34px;
-  height: 26px;
-  background-color: #1b4332;
-  border: 2px solid #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.65rem;
-  font-weight: bold;
-  color: #fca5a5;
-  z-index: 4;
-  pointer-events: none;
+#canvas-container {
+  background-color: transparent;
+  touch-action: none;
+  position: relative;
+  z-index: 5;
 }
 
-#canvas-container, #canvas-3d-container {
-  background-color: #1b4332;
+#canvas-5d-container {
+  background-color: #0f172a;
   border: 2px solid #ffffff;
   touch-action: none;
   overflow: hidden;
@@ -244,7 +241,7 @@ input[type="number"] {
 }
 
 .quick-tools {
-  margin-top: 6px;
+  margin-top: 5px;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -265,7 +262,7 @@ input[type="number"] {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
   margin-bottom: 6px;
 }
 
@@ -323,7 +320,7 @@ input[type="number"] {
 }
 
 /* ========================================================================== */
-/* BAGIAN 6: CUSTOM POP-UP MODAL & KELAS UTILITAS                             */
+/* BAGIAN 6: CUSTOM POP-UP MODAL & KUSTOM WARNA SERAGAM                       */
 /* ========================================================================== */
 .modal-overlay {
   position: fixed;
@@ -369,6 +366,32 @@ input[type="number"] {
   padding: 8px 10px !important;
   font-size: 0.9rem !important;
   text-align: center;
+}
+
+.uniform-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f172a;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  font-size: 0.82rem;
+}
+
+.color-row input[type="color"] {
+  width: 38px;
+  height: 26px;
+  border: none;
+  background: none;
+  cursor: pointer;
 }
 
 .modal-buttons {
