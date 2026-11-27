@@ -138,6 +138,21 @@ input[type="number"] {
   color: #cbd5e1;
 }
 
+.danton-zone {
+  background-color: #143628;
+  border: 2px dashed #ef4444;
+  border-bottom: none;
+  width: 54px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.55rem;
+  font-weight: bold;
+  color: #fca5a5;
+  letter-spacing: 0.5px;
+}
+
 #canvas-container, #canvas-3d-container {
   background-color: #1b4332;
   border: 2px solid #ffffff;
