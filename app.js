@@ -1,7 +1,7 @@
 // ============================================================================
 // BAGIAN 1: KONFIGURASI API GOOGLE APPS SCRIPT & STATE GLOBAL
 // ============================================================================
-const APPS_SCRIPT_URL = "TEMPEL_URL_WEB_APP_APPS_SCRIPT_ANDA_DI_SINI";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbypOugpXmLsnd_Q4dYber4O6V_xDt4JrDeCaiA-RgrirMCDtHpaJNxewlAfiMA6MhACiA/exec";
 
 if (typeof Konva !== 'undefined') {
   Konva.pixelRatio = 1.25;
@@ -31,12 +31,16 @@ let audioCtx = null;
 let audioSourceNode = null;
 let audioDestNode = null;
 
-// State Three.js (3D)
+// State Three.js (3D) & Kontrol Sudut Kamera Orbit
 let threeScene = null;
 let threeCamera = null;
 let threeRenderer = null;
 let threeMembers = {};
 let threeAnimId = null;
+
+let camAzimuth = 0;      // Sudut putar horizontal (radian)
+let camElevation = 0.78; // Sudut kemiringan vertikal (radian)
+let camDistance = 26;    // Jarak kamera dari pusat lapang
 
 // ============================================================================
 // BAGIAN 2: INISIALISASI KANVAS 2D KONVA & LAYER
@@ -146,7 +150,7 @@ function calculateCanvasDimensions() {
   const winW = window.innerWidth || 360;
   const winH = window.innerHeight || 640;
   const maxW = Math.max(200, Math.min(winW - 58, 500));
-  const maxH = Math.max(210, Math.min(winH - 335, 380));
+  const maxH = Math.max(200, Math.min(winH - 355, 365));
   const ratio = fieldMetersW / fieldMetersL;
 
   if (maxW / maxH > ratio) {
@@ -223,6 +227,7 @@ document.getElementById('btnApplyField').addEventListener('click', () => {
   }
   fieldMetersL = l;
   fieldMetersW = w;
+  camDistance = Math.max(fieldMetersL, fieldMetersW) * 1.25;
   calculateCanvasDimensions();
   rebuildCanvas();
   if (is3DMode) rebuild3DFieldAndTroops();
@@ -282,7 +287,7 @@ function selectMember(id) {
     const mainShape = memberNodes[key].findOne('.mainBody');
     if (mainShape) {
       mainShape.stroke(key === id ? '#facc15' : '#ffffff');
-      mainShape.strokeWidth(key === id ? 2.5 : 1.5);
+      mainShape.strokeWidth(key === id ? 2.2 : 1.5);
     }
   });
   troopLayer.batchDraw();
@@ -336,7 +341,7 @@ function buildMemberNode(m, r) {
       name: 'labelText',
       text: m.label,
       y: r * 0.85,
-      fontSize: Math.max(8, Math.round(r * 0.85)),
+      fontSize: Math.max(6, Math.round(r * 0.72)),
       fontStyle: 'bold',
       fill: '#ffffff',
       width: 60,
@@ -359,17 +364,21 @@ function buildMemberNode(m, r) {
       perfectDrawEnabled: false
     });
 
-    const fontSize = m.label.length > 2 ? Math.max(7, Math.round(r * 0.72)) : Math.max(8, Math.round(r * 0.92));
+    // Ukuran angka proporsional di dalam lingkaran (tidak kebesaran)
+    const fontSize = m.label.length > 2
+      ? Math.max(5, Math.round(r * 0.55))
+      : Math.max(6, Math.round(r * 0.68));
+
     const text = new Konva.Text({
       name: 'labelText',
       text: m.label,
       fontSize: fontSize,
       fontStyle: 'bold',
       fill: '#ffffff',
-      width: r * 2.4,
+      width: r * 2.2,
       align: 'center',
-      offsetX: r * 1.2,
-      offsetY: fontSize * 0.5,
+      offsetX: r * 1.1,
+      offsetY: fontSize * 0.48,
       listening: false,
       perfectDrawEnabled: false
     });
@@ -516,7 +525,7 @@ document.getElementById('btnResetPos').addEventListener('click', async () => {
 });
 
 // ============================================================================
-// BAGIAN 7: MODE SIMULASI 3D (THREE.JS & ANIMASI LANGKAH PASUKAN)
+// BAGIAN 7: MODE SIMULASI 3D, KONSOL ARAH & ORBIT KAMERA 360°
 // ============================================================================
 document.getElementById('btnToggle3D').addEventListener('click', () => {
   if (typeof THREE === 'undefined') {
@@ -525,26 +534,72 @@ document.getElementById('btnToggle3D').addEventListener('click', () => {
   }
 
   is3DMode = !is3DMode;
-  const c2d = document.getElementById('canvas-container');
+  const wrapper2D = document.getElementById('fieldWrapper2D');
   const c3d = document.getElementById('canvas-3d-container');
-  const dantonBox = document.getElementById('dantonBox2D');
+  const camConsole = document.getElementById('cameraConsole3D');
   const btn = document.getElementById('btnToggle3D');
 
   if (is3DMode) {
-    c2d.classList.add('hidden');
-    if (dantonBox) dantonBox.classList.add('hidden');
+    wrapper2D.classList.add('hidden');
     c3d.classList.remove('hidden');
+    camConsole.classList.remove('hidden');
     btn.innerText = '🗺️ 2D';
     init3DScene();
     setStatus("Mode 3D Aktif");
   } else {
     c3d.classList.add('hidden');
-    c2d.classList.remove('hidden');
-    if (dantonBox) dantonBox.classList.remove('hidden');
+    camConsole.classList.add('hidden');
+    wrapper2D.classList.remove('hidden');
     btn.innerText = '🧊 3D';
     stop3DLoop();
     setStatus("Mode 2D Aktif");
   }
+});
+
+function updateCamera3DPosition() {
+  if (!threeCamera) return;
+  const x = camDistance * Math.sin(camElevation) * Math.sin(camAzimuth);
+  const y = camDistance * Math.cos(camElevation);
+  const z = camDistance * Math.sin(camElevation) * Math.cos(camAzimuth);
+  threeCamera.position.set(x, Math.max(2, y), z);
+  threeCamera.lookAt(0, 0, 0);
+}
+
+// Event Tombol Konsol Arah Kamera 3D
+document.querySelectorAll('.cam-btn[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const view = btn.getAttribute('data-view');
+    document.querySelectorAll('.cam-btn[data-view]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (view === 'juri') {
+      camAzimuth = 0;
+      camElevation = 0.78;
+    } else if (view === 'belakang') {
+      camAzimuth = Math.PI;
+      camElevation = 0.78;
+    } else if (view === 'kiri') {
+      camAzimuth = -Math.PI / 2;
+      camElevation = 0.78;
+    } else if (view === 'kanan') {
+      camAzimuth = Math.PI / 2;
+      camElevation = 0.78;
+    } else if (view === 'atas') {
+      camAzimuth = 0;
+      camElevation = 0.05;
+    }
+    updateCamera3DPosition();
+  });
+});
+
+document.getElementById('btnCamZoomIn').addEventListener('click', () => {
+  camDistance = Math.max(10, camDistance - 3);
+  updateCamera3DPosition();
+});
+
+document.getElementById('btnCamZoomOut').addEventListener('click', () => {
+  camDistance = Math.min(60, camDistance + 3);
+  updateCamera3DPosition();
 });
 
 function init3DScene() {
@@ -557,8 +612,8 @@ function init3DScene() {
     threeScene.background = new THREE.Color(0x0f172a);
 
     threeCamera = new THREE.PerspectiveCamera(42, canvasW / canvasH, 0.1, 200);
-    threeCamera.position.set(0, fieldMetersL * 0.95, fieldMetersL * 0.95);
-    threeCamera.lookAt(0, 0, 0);
+    camDistance = Math.max(fieldMetersL, fieldMetersW) * 1.25;
+    updateCamera3DPosition();
 
     threeRenderer = new THREE.WebGLRenderer({ antialias: true });
     threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
@@ -566,11 +621,38 @@ function init3DScene() {
     container.innerHTML = '';
     container.appendChild(threeRenderer.domElement);
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.75);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.78);
     threeScene.add(ambient);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.68);
     dirLight.position.set(10, 25, 15);
     threeScene.add(dirLight);
+
+    // Geser Jari / Mouse di Kanvas 3D untuk Memutar Sudut Pandang Bebas
+    let isDraggingCam = false;
+    let prevPointerX = 0;
+    let prevPointerY = 0;
+
+    threeRenderer.domElement.addEventListener('pointerdown', (e) => {
+      isDraggingCam = true;
+      prevPointerX = e.clientX;
+      prevPointerY = e.clientY;
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDraggingCam || !is3DMode) return;
+      const dx = e.clientX - prevPointerX;
+      const dy = e.clientY - prevPointerY;
+      prevPointerX = e.clientX;
+      prevPointerY = e.clientY;
+
+      camAzimuth -= dx * 0.012;
+      camElevation = Math.max(0.05, Math.min(1.42, camElevation - dy * 0.01));
+      updateCamera3DPosition();
+    });
+
+    window.addEventListener('pointerup', () => {
+      isDraggingCam = false;
+    });
   } else {
     resize3DView();
   }
@@ -585,8 +667,7 @@ function resize3DView() {
   container.style.width = canvasW + 'px';
   container.style.height = canvasH + 'px';
   threeCamera.aspect = canvasW / canvasH;
-  threeCamera.position.set(0, fieldMetersL * 0.95, fieldMetersL * 0.95);
-  threeCamera.lookAt(0, 0, 0);
+  updateCamera3DPosition();
   threeCamera.updateProjectionMatrix();
   threeRenderer.setSize(canvasW, canvasH);
 }
@@ -659,6 +740,7 @@ function rebuild3DFieldAndTroops() {
   }
   threeMembers = {};
 
+  // Lantai Lapangan Utama (22m x 15m Utuh)
   const plane = new THREE.Mesh(
     new THREE.PlaneGeometry(fieldMetersW, fieldMetersL),
     new THREE.MeshLambertMaterial({ color: 0x1b4332 })
@@ -666,7 +748,16 @@ function rebuild3DFieldAndTroops() {
   plane.rotation.x = -Math.PI / 2;
   threeScene.add(plane);
 
-  // Kotak Khusus Danton menyambung utuh di luar garis kiri tengah lapangan (z = 0)
+  // Garis Tepian Putih Utama Lapangan (22m x 15m)
+  const mainFieldBorder = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.PlaneGeometry(fieldMetersW, fieldMetersL)),
+    new THREE.LineBasicMaterial({ color: 0xffffff })
+  );
+  mainFieldBorder.rotation.x = -Math.PI / 2;
+  mainFieldBorder.position.y = 0.015;
+  threeScene.add(mainFieldBorder);
+
+  // Kotak Khusus Danton dengan 4 Garis Tepi Utuh di Luar Garis Kiri (z = 0)
   const dantonBox = new THREE.Mesh(
     new THREE.PlaneGeometry(1.4, 1.6),
     new THREE.MeshLambertMaterial({ color: 0x1b4332 })
@@ -674,6 +765,14 @@ function rebuild3DFieldAndTroops() {
   dantonBox.rotation.x = -Math.PI / 2;
   dantonBox.position.set(-(fieldMetersW / 2) - 0.7, 0.01, 0);
   threeScene.add(dantonBox);
+
+  const dantonBorder = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.PlaneGeometry(1.4, 1.6)),
+    new THREE.LineBasicMaterial({ color: 0xffffff })
+  );
+  dantonBorder.rotation.x = -Math.PI / 2;
+  dantonBorder.position.set(-(fieldMetersW / 2) - 0.7, 0.018, 0);
+  threeScene.add(dantonBorder);
 
   const maxDim = Math.max(fieldMetersW, fieldMetersL);
   const gridHelper = new THREE.GridHelper(maxDim, maxDim, 0xffffff, 0x2d6a4f);
