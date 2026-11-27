@@ -1,7 +1,7 @@
 // ============================================================================
 // BAGIAN 1: KONFIGURASI NAMA CACHE & DAFTAR FILE OFFLINE
 // ============================================================================
-const CACHE_NAME = 'paskibra-v12';
+const CACHE_NAME = 'paskibra-v13';
 const ASSETS = [
   './',
   './index.html',
