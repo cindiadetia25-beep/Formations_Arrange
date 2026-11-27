@@ -6,10 +6,10 @@
   <!-- ====================================================================== -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Paskibra Formation Designer</title>
+  <title>Paskibra Formation Designer 5D</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1e293b">
-  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="style.css?v=15">
   <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -31,7 +31,7 @@
   </header>
 
   <!-- ====================================================================== -->
-  <!-- BAGIAN 3: SUB-TOOLBAR (UKURAN LAPANG, BENTUK TITIK, 3D & UNDO/REDO)    -->
+  <!-- BAGIAN 3: SUB-TOOLBAR (UKURAN LAPANG, BENTUK TITIK, 5D & UNDO/REDO)    -->
   <!-- ====================================================================== -->
   <section class="sub-toolbar">
     <div class="field-size-group">
@@ -43,22 +43,22 @@
     </div>
     <div class="history-group">
       <button id="btnToggleShape" class="btn secondary small" title="Ubah Bentuk Titik">👤 Orang</button>
-      <button id="btnToggle3D" class="btn indigo small" title="Tampilan 3D">🧊 3D</button>
+      <button id="btnToggle5D" class="btn indigo small" title="Simulasi 5D">✨ 5D</button>
       <button id="btnUndo" class="btn secondary small" disabled>↩</button>
       <button id="btnRedo" class="btn secondary small" disabled>↪</button>
     </div>
   </section>
 
   <!-- ====================================================================== -->
-  <!-- BAGIAN 4: AREA KERJA KANVAS LANDSCAPE (2D, KOTAK DANTON, 3D & KONSOLE) -->
+  <!-- BAGIAN 4: AREA KERJA KANVAS LANDSCAPE (2D, KOTAK DANTON, 5D & KONSOLE) -->
   <!-- ====================================================================== -->
   <main class="workspace">
     <div class="field-info">
       <span id="fieldLabel">ARAH DEWAN JURI / DP — KANAN (22m x 15m)</span>
     </div>
 
-    <!-- Konsol Kamera & Arah Hadap Pasukan (Muncul Saat Mode 3D Aktif) -->
-    <div id="cameraConsole3D" class="camera-console hidden">
+    <!-- Konsol Kamera & Arah Hadap Pasukan (Muncul Saat Mode 5D Aktif) -->
+    <div id="cameraConsole5D" class="camera-console hidden">
       <div class="console-row">
         <span class="console-tag">Kamera:</span>
         <button class="cam-btn active" data-view="lomba" title="Kamera Tribun Lomba">Lomba</button>
@@ -70,7 +70,7 @@
         <button id="btnCamZoomOut" class="cam-btn" title="Perkecil">−</button>
       </div>
       <div class="console-row">
-        <span class="console-tag">Hadap Titik:</span>
+        <span class="console-tag">Hadap:</span>
         <button class="face-btn" data-face="danton" title="Hadap ke Danton">Ke D</button>
         <button class="face-btn" data-face="dp" title="Hadap Dewan Juri">Ke DP</button>
         <button class="face-btn" data-face="belakang" title="Hadap Belakang">Blkg</button>
@@ -80,18 +80,18 @@
       </div>
     </div>
 
-    <!-- Wadah Lapangan 2D Landscape dengan Kotak Danton Utuh di Bawah Tengah -->
+    <!-- Wadah Lapangan 2D Landscape dengan Ruang Kotak Danton Tanpa Terpotong -->
     <div id="fieldWrapper2D" class="field-wrapper">
       <div id="canvas-container"></div>
-      <div id="dantonBox2D" class="danton-zone" title="Kotak Khusus Danton">D</div>
     </div>
 
-    <!-- Wadah Simulasi 3D Landscape -->
-    <div id="canvas-3d-container" class="hidden"></div>
+    <!-- Wadah Simulasi 5D Landscape (Bisa Geser Orang Langsung) -->
+    <div id="canvas-5d-container" class="hidden"></div>
 
-    <!-- Alat Cepat Pasukan & Mode Blok Seleksi -->
+    <!-- Alat Cepat Pasukan, Blok Seleksi & Kustom Seragam -->
     <div class="quick-tools">
       <button id="btnSelectBox" class="btn secondary small" title="Seret Kotak untuk Blok Banyak Titik">⬚ Blok</button>
+      <button id="btnUniformColor" class="btn secondary small" title="Ganti Warna Topi, Baju, Celana & Sepatu">🎨 Seragam</button>
       <button id="btnAddMember" class="btn secondary small">+ Pasukan</button>
       <button id="btnRenameMember" class="btn secondary small" disabled>✎ Nama</button>
       <button id="btnDeleteSelected" class="btn warning small" disabled>Hapus</button>
@@ -101,26 +101,27 @@
   </main>
 
   <!-- ====================================================================== -->
-  <!-- BAGIAN 5: PANEL TIMELINE HITUNGAN, AUDIO & EXPORT VIDEO                -->
+  <!-- BAGIAN 5: PANEL TIMELINE HITUNGAN, REKAM SUARA DANTON & EXPORT VIDEO   -->
   <!-- ====================================================================== -->
   <footer class="timeline-panel">
     <div class="playback-controls">
       <button id="btnPlay" class="btn play small">▶ Play</button>
       <button id="btnAddScene" class="btn add small">+ Hitungan</button>
-      <button id="btnAudio" class="btn purple small">🎵 Audio</button>
+      <button id="btnRecordVoice" class="btn rose small" title="Rekam Suara Aba-aba Danton">🎙️ Rekam</button>
+      <button id="btnAudio" class="btn purple small" title="Pilih File Lagu/Audio">🎵 File</button>
       <button id="btnExportVideo" class="btn teal small">⬇ Video</button>
       <input type="file" id="audioInput" accept="audio/*" class="hidden">
       <span id="statusText" class="status">Siap</span>
     </div>
     <div id="audioBadge" class="audio-badge hidden">
-      <span id="audioFileName">Lagu terpilih</span>
+      <span id="audioFileName">Audio aktif</span>
       <button id="btnRemoveAudio" class="btn-remove-audio">✕</button>
     </div>
     <div id="sceneList" class="scene-list"></div>
   </footer>
 
   <!-- ====================================================================== -->
-  <!-- BAGIAN 6: CUSTOM POP-UP MODAL (NOTIFIKASI, KONFIRMASI & INPUT NAMA)    -->
+  <!-- BAGIAN 6: MODAL POP-UP UMUM & MODAL KUSTOM WARNA SERAGAM               -->
   <!-- ====================================================================== -->
   <div id="customModal" class="modal-overlay hidden">
     <div class="modal-box">
@@ -134,10 +135,40 @@
     </div>
   </div>
 
+  <!-- Modal Pengaturan Warna Seragam Lengkap (Topi, Atasan, Bawahan, Sepatu) -->
+  <div id="uniformModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3>Kustom Warna Seragam</h3>
+      <p id="uniformTargetText">Terapkan ke pasukan terpilih</p>
+      <div class="uniform-grid">
+        <label class="color-row">
+          <span>🎩 Topi Pet</span>
+          <input type="color" id="colorCap" value="#dc2626">
+        </label>
+        <label class="color-row">
+          <span>👕 Baju Atasan</span>
+          <input type="color" id="colorTop" value="#f8fafc">
+        </label>
+        <label class="color-row">
+          <span>👖 Celana Bawahan</span>
+          <input type="color" id="colorBottom" value="#1e3a8a">
+        </label>
+        <label class="color-row">
+          <span>🥾 Sepatu Boot</span>
+          <input type="color" id="colorBoots" value="#111827">
+        </label>
+      </div>
+      <div class="modal-buttons">
+        <button id="btnCancelUniform" class="btn secondary">Batal</button>
+        <button id="btnApplyUniform" class="btn primary">Terapkan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ====================================================================== -->
   <!-- BAGIAN 7: SCRIPT UTAMA & REGISTRASI SERVICE WORKER                     -->
   <!-- ====================================================================== -->
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js');
