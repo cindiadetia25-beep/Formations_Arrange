@@ -25,7 +25,7 @@ body {
 /* ========================================================================== */
 .toolbar {
   background-color: #1e293b;
-  padding: 7px 10px;
+  padding: 6px 10px;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -37,7 +37,7 @@ body {
 
 .brand {
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   letter-spacing: 1px;
 }
 
@@ -59,7 +59,7 @@ body {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #1e293b;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   flex-shrink: 0;
 }
 
@@ -76,9 +76,9 @@ input[type="text"], select {
   background: #0f172a;
   border: 1px solid #475569;
   color: white;
-  padding: 5px 7px;
+  padding: 4px 7px;
   border-radius: 6px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   max-width: 110px;
 }
 
@@ -88,17 +88,17 @@ input[type="number"] {
   color: white;
   padding: 3px 4px;
   border-radius: 5px;
-  width: 40px;
+  width: 38px;
   text-align: center;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
 }
 
 .btn {
-  padding: 5px 9px;
+  padding: 5px 8px;
   border: none;
   border-radius: 6px;
   font-weight: 600;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   cursor: pointer;
 }
 
@@ -108,12 +108,18 @@ input[type="number"] {
 
 .btn.small {
   padding: 4px 7px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
 }
 
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.btn.active-mode {
+  background: #eab308 !important;
+  color: #0f172a !important;
+  font-weight: 800;
 }
 
 .btn.primary { background: #dc2626; color: white; }
@@ -127,7 +133,7 @@ input[type="number"] {
 .btn.indigo { background: #4f46e5; color: white; }
 
 /* ========================================================================== */
-/* BAGIAN 4: WORKSPACE LAPANGAN, KOTAK DANTON UTUH & KONSOL KAMERA 3D         */
+/* BAGIAN 4: WORKSPACE LANDSCAPE, KOTAK DANTON UTUH & KONSOL KAMERA 3D        */
 /* ========================================================================== */
 .workspace {
   flex: 1;
@@ -135,7 +141,7 @@ input[type="number"] {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: 4px 8px;
   overflow: hidden;
   min-height: 0;
 }
@@ -144,17 +150,16 @@ input[type="number"] {
   background: #334155;
   padding: 3px 12px;
   border-radius: 4px 4px 0 0;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: bold;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.6px;
   color: #cbd5e1;
 }
 
 .camera-console {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 3px;
   background: #0f172a;
   border: 1px solid #334155;
   border-bottom: none;
@@ -162,13 +167,28 @@ input[type="number"] {
   border-radius: 4px 4px 0 0;
 }
 
-.cam-btn {
+.console-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.console-tag {
+  font-size: 0.62rem;
+  color: #94a3b8;
+  font-weight: bold;
+  margin-right: 2px;
+}
+
+.cam-btn, .face-btn {
   background: #1e293b;
   color: #e2e8f0;
   border: 1px solid #475569;
   border-radius: 4px;
-  padding: 2px 6px;
-  font-size: 0.65rem;
+  padding: 2px 5px;
+  font-size: 0.62rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -179,21 +199,29 @@ input[type="number"] {
   color: #ffffff;
 }
 
+.face-btn:active {
+  background: #0d9488;
+  border-color: #2dd4bf;
+  color: #ffffff;
+}
+
 .field-wrapper {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin-bottom: 18px;
 }
 
-/* Kotak Danton Utuh (4 Garis Penuh) Menempel Rapat di Luar Garis Kiri Lapang */
+/* Kotak Danton Utuh (4 Garis Penuh) Menempel Rapat di Luar Garis Bawah Lapang Landscape */
 .danton-zone {
   position: absolute;
-  left: -26px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 28px;
-  height: 34px;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 34px;
+  height: 26px;
   background-color: #1b4332;
   border: 2px solid #ffffff;
   display: flex;
@@ -220,7 +248,7 @@ input[type="number"] {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 /* ========================================================================== */
@@ -229,7 +257,7 @@ input[type="number"] {
 .timeline-panel {
   background-color: #1e293b;
   border-top: 1px solid #334155;
-  padding: 7px 10px 14px 10px;
+  padding: 6px 10px 12px 10px;
   flex-shrink: 0;
 }
 
@@ -242,7 +270,7 @@ input[type="number"] {
 }
 
 .status {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: #94a3b8;
   margin-left: auto;
 }
@@ -254,7 +282,7 @@ input[type="number"] {
   background: #2e1065;
   border: 1px solid #7c3aed;
   color: #ddd6fe;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   padding: 3px 8px;
   border-radius: 5px;
   margin-bottom: 5px;
@@ -279,12 +307,12 @@ input[type="number"] {
 .scene-card {
   background: #0f172a;
   border: 2px solid #334155;
-  padding: 5px 11px;
+  padding: 5px 10px;
   border-radius: 8px;
-  min-width: 82px;
+  min-width: 80px;
   text-align: center;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: bold;
   white-space: nowrap;
 }
